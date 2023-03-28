@@ -1,0 +1,11 @@
+#saved feature
+/data/esmfeature
+/data/pdbs
+#缓存
+__pycache__/
+#log
+log/*
+#model
+models/saved/*
+#tmp
+tmp/
