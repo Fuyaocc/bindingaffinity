@@ -17,23 +17,22 @@ def getInterfaceRateFromInterfaceRes(pdbName,interactionInfo,allRes,interfaceRes
 def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
     #pdbName
     pdbName=os.path.basename(os.path.splitext(pdbPath)[0])
-    chainGroup=set()
+    chainGroup=[]
     parser = PDBParser()
     structure = parser.get_structure("temp", pdbPath)
     interactionInfo=''
     for chain in structure.get_chains():
-        chainGroup.add(chain.get_id())
+        chainGroup.append(chain.get_id())
         interactionInfo=interactionInfo+'_'+chain.get_id()
     # print(chainGroup)
     interactionInfo=interactionInfo[1:]
     # print(interactionInfo)
     #先计算interface residue
     if pdbName=='inl0':
-        chainGroup={'L','H'}
+        chainGroup=['L','H']
         interactionInfo='L_H'
     if len(chainGroup)!=2:
-        logging.error("interaction Info error:{}".format(interactionInfo))
-        sys.exit()
+        return -1,0,0
     
     model=structure[0]
     allRes={}  #complex每条链的有效残基

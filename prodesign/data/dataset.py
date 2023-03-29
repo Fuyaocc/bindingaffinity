@@ -18,7 +18,7 @@ from prodesign.data.parsers import parse_a3m, parse_fasta
 from prodesign.model.features import FeatureBuilder
 from prodesign.utils import default, exists
 from prodesign.model.functional import rigids_from_3x3
-from utils.design import get_feature
+# from utils.design import get_feature
 
 logger = logging.getLogger(__file__)
 

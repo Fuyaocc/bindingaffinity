@@ -2,12 +2,12 @@ import torch
 import logging
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
-def run_predict(model,dataloader,criterion,device,epoch,num_layers):
+def run_predict(model,dataloader,criterion,device,i,epoch,num_layers):
     model.eval()
     model.to(device)
     epoch_loss=0
     dataitr=iter(dataloader)
-    f=open('./tmp/test/test_'+str(epoch)+'.txt','w')
+    f=open(f'./tmp/test/val{i}/test_'+str(epoch)+'.txt','w')
     prelist = []
     truelist = []
     for batch_id,data in enumerate(dataitr):

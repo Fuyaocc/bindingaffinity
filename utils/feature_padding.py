@@ -11,7 +11,7 @@ def to_padding(featureList):
             paddinglen=0
             if featureList[i][j].size(0)<=args.padding:
                 paddinglen=args.padding-featureList[i][j].size(0)
-                padding=torch.zeros(paddinglen,512)
+                padding=torch.zeros(paddinglen,args.dim)
                 padding=padding.to(args.device)
                 featureList[i][j]=torch.cat((featureList[i][j],padding),dim=0)
     return featureList

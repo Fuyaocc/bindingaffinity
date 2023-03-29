@@ -5,17 +5,17 @@ from models.ban import BANLayer
 from torch.nn.utils.weight_norm import weight_norm
 
 class AffinityNet(nn.Module):
-    def __init__(self,dim=512,device='cuda:1'):
+    def __init__(self,dim=512,device='cuda:0'):
         super().__init__()
 
-        self.encode=ProteinCNN(dim,[512,512,512])
-        self.encode1=ProteinCNN(dim,[512,512,512])
+        self.encode=ProteinCNN(dim,[dim,dim,dim])
+        self.encode1=ProteinCNN(dim,[dim,dim,dim])
         
-        self.bcn = weight_norm(BANLayer(v_dim=512,q_dim=512, h_dim=512, h_out=2) ,
+        self.bcn = weight_norm(BANLayer(v_dim=dim,q_dim=dim, h_dim=dim, h_out=2) ,
                                name='h_mat', 
                                dim=None)
 
-        self.decode = MLPDecoder(512,256)
+        self.decode = MLPDecoder(dim,dim//2)
         
         self.to(device)
 

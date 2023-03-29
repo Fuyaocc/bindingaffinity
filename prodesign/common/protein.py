@@ -21,7 +21,7 @@ import dataclasses
 import numpy as np
 import re
 
-from prodesign.common import residue_constants
+from . import residue_constants
 
 FeatureDict = Mapping[str, np.ndarray]
 ModelOutput = Mapping[str, Any]  # Is a nested dict.

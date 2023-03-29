@@ -2,11 +2,11 @@ import torch
 import logging
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
-def run_train(model,dataloader,optimizer,criterion,device,epoch,outDir,num_layers):
+def run_train(model,dataloader,optimizer,criterion,device,i,epoch,outDir,num_layers):
     model.train()
     model.to(device)
     dataitr=iter(dataloader)
-    f=open('./tmp/train/train_'+str(epoch)+'.txt','w')
+    f=open(f'./tmp/train/val{i}/train_'+str(epoch)+'.txt','w')
     prelist = []
     truelist = []
     epoch_loss=0.0

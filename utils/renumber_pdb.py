@@ -60,14 +60,14 @@ class Pdb(object):
                         num = str(count)
                         while len(num) < 4:
                             num = ' ' + num
-                        new_row = '%s%s' %(row[:22], num)
+                        new_row = '%s%s' %(row[:22], num+' ')
                         # while len(new_row) < 29:
                         #     new_row += ' '
                         # xcoord = row[30:38].strip()
                         # while len(xcoord) < 9:
                         #     xcoord = ' ' + xcoord
                         # row = '%s%s%s' %(new_row, xcoord, row[38:])
-                        row = '%s%s' %(new_row,row[26:])
+                        row = '%s%s' %(new_row,row[27:])
                         if row.startswith('TER') and reset:
                             count = start - 1
                 out.append(row)

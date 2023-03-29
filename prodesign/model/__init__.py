@@ -1,1 +1,1 @@
-from prodesign.model.prodesign import ProDesign
+from .prodesign import ProDesign

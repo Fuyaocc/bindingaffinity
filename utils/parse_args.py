@@ -13,7 +13,7 @@ def get_args():
     parser.add_argument("--outDir",default="./tmp/",help="Output directory, defaults to tmp")
     parser.add_argument('--device', type=str, default='cuda:1',help='set device')
     parser.add_argument('--inputDir',type=str,default="./data/",help='input data dictionary')
-    parser.add_argument('--dim',type=int,default=1280,help='model input dim')
+    parser.add_argument('--dim',type=int,default=256,help='model input dim')
     parser.add_argument('--epoch',type=int,default=500,help='trainning epoch')
     parser.add_argument('--batch_size',type=int,default=32,help='batch size ')
     parser.add_argument('--num_layers',type=int,default=3,help='conv and gru numbers')

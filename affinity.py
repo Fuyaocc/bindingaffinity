@@ -60,37 +60,43 @@ if __name__ == '__main__':
         # if i>=10:
         #     continue
         # i=i+1
-        if pdbname == '1nl0':   continue
         # if pdbname != '3k8p': continue
-
-        esmFeature=[]
-        # logging.info("generate sequcence esm1v : "+pdbname)
-        # chain1_esm=torch.load(args.inputDir+'esmfeature/'+pdbname+'_chain1.pth')
-        # chain2_esm=torch.load(args.inputDir+'esmfeature/'+pdbname+'_chain2.pth')
-        # esmFeature.append(chain1_esm.to(args.device))
-        # esmFeature.append(chain2_esm.to(args.device))
-        logging.info("loading esm structure emb :  "+pdbname)
+        
+        #local redisue
+        c1=[]
+        c2=[]
         seq,interfaceDict,clist=getInterfaceRateAndSeq('../pdbs/'+pdbname+'.pdb',interfaceDis=12)
         cl1=interfaceDict[clist[0]]
         cl2=interfaceDict[clist[1]]
         start1=seq[pdbname+'_'+clist[0]][1]
         start2=seq[pdbname+'_'+clist[1]][1]
-        # print(start1)
-        # print(start2)
-        c1_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+clist[0]+'.pth')
-        c2_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+clist[1]+'.pth')
-        c1=[]
-        c2=[]
-        # print(seq)
-        # print(interfaceDict)
+
+        esmFeature=[]
+        #esm1v seq embedding
+        # logging.info("generate sequcence esm1v : "+pdbname)
+        # chain1_esm=torch.load(args.inputDir+'esmfeature/'+pdbname+'_chain1.pth')
+        # chain2_esm=torch.load(args.inputDir+'esmfeature/'+pdbname+'_chain2.pth')
+        # esmFeature.append(chain1_esm.to(args.device))
+        # esmFeature.append(chain2_esm.to(args.device))
+        
+        #esm-if1 struct embedding
+        logging.info("loading esm structure emb :  "+pdbname)
+        esm_c1_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+clist[0]+'.pth')
+        esm_c2_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+clist[1]+'.pth')
+        
+        #le embedding
+        logging.info("loading prodesign le emb :  "+pdbname)
+        c1_all=torch.load('/home/ysbgs/xky/lefeature/'+pdbname+'_'+clist[0]+'.pth')
+        c2_all=torch.load('/home/ysbgs/xky/lefeature/'+pdbname+'_'+clist[1]+'.pth')
+        
         for v in cl1:
             reduise=v.split('_')[1]
             index=int(reduise[1:])-start1
-            c1.append(c1_all[index].tolist())
+            c1.append(c1_all[index].tolist()+esm_c1_all[index].tolist())
         for v in cl2:
             reduise=v.split('_')[1]
             index=int(reduise[1:])-start2
-            c2.append(c2_all[index].tolist())
+            c2.append(c2_all[index].tolist()+esm_c1_all[index].tolist())
             
         if maxlen < len(c1): maxlen= len(c1)
         if maxlen < len(c2): maxlen= len(c2)
@@ -107,7 +113,7 @@ if __name__ == '__main__':
     logging.info(str(maxlen))
     
     #padding
-    # featureList=to_padding(featureList)
+    featureList=to_padding(featureList)
         
     #10折交叉
     kf = KFold(n_splits=10,random_state=2022, shuffle=True)
@@ -122,52 +128,52 @@ if __name__ == '__main__':
         
         check_len(i,x_train,x_test)
         
-    #     train_dataset=MyDataset(x_train,y_train)
-    #     train_dataloader=DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True)
+        train_dataset=MyDataset(x_train,y_train)
+        train_dataloader=DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True)
 
-    #     test_dataset=MyDataset(x_test,y_test)
-    #     test_dataloader=DataLoader(test_dataset,batch_size=args.batch_size,shuffle=True)
+        test_dataset=MyDataset(x_test,y_test)
+        test_dataloader=DataLoader(test_dataset,batch_size=args.batch_size,shuffle=True)
 
-    #     criterion = torch.nn.MSELoss()
-    #     optimizer = torch.optim.Adam(Affinity_model.parameters(), lr = 1e-4, weight_decay = 1e-4)
-    #     # optimizer = torch.optim.AdamW(Affinity_model.parameters(),lr=1e-4,weight_decay=1e-4)
+        criterion = torch.nn.MSELoss()
+        optimizer = torch.optim.Adam(Affinity_model.parameters(), lr = 1e-4, weight_decay = 1e-4)
+        # optimizer = torch.optim.AdamW(Affinity_model.parameters(),lr=1e-4,weight_decay=1e-4)
 
-    #     writer = SummaryWriter('./log/val'+str(i))
+        writer = SummaryWriter('./log/val'+str(i))
         
-    #     for epoch in range(args.epoch):
-    #         train_prelist, train_truelist, train_loss = run_train(Affinity_model,train_dataloader,optimizer,criterion,i,args.device,epoch,args.outDir,args.num_layers)
-    #         logging.info("Epoch "+ str(epoch)+ ": train Loss = %.4f"%(train_loss))
+        for epoch in range(args.epoch):
+            train_prelist, train_truelist, train_loss = run_train(Affinity_model,train_dataloader,optimizer,criterion,args.device,i,epoch,args.outDir,args.num_layers)
+            logging.info("Epoch "+ str(epoch)+ ": train Loss = %.4f"%(train_loss))
 
-    #         df = pd.DataFrame({'label':train_truelist, 'pre':train_prelist})
-    #         train_pcc = df.pre.corr(df.label)
-    #         writer.add_scalar('affinity_train/loss', train_loss, epoch)
-    #         writer.add_scalar('affinity_train/pcc', train_pcc, epoch)
+            df = pd.DataFrame({'label':train_truelist, 'pre':train_prelist})
+            train_pcc = df.pre.corr(df.label)
+            writer.add_scalar('affinity_train/loss', train_loss, epoch)
+            writer.add_scalar('affinity_train/pcc', train_pcc, epoch)
         
-    #         test_prelist, test_truelist,test_loss = run_predict(Affinity_model,test_dataloader,criterion,i,args.device,epoch,args.num_layers)
-    #         logging.info("Epoch "+ str(epoch)+ ": test Loss = %.4f"%(test_loss))
+            test_prelist, test_truelist,test_loss = run_predict(Affinity_model,test_dataloader,criterion,args.device,i,epoch,args.num_layers)
+            logging.info("Epoch "+ str(epoch)+ ": test Loss = %.4f"%(test_loss))
 
-    #         df = pd.DataFrame({'label':test_truelist, 'pre':test_prelist})
-    #         test_pcc = df.pre.corr(df.label)
-    #         writer.add_scalar('affinity_test/loss', test_loss, epoch)
-    #         writer.add_scalar('affinity_test/pcc', test_pcc, epoch)
+            df = pd.DataFrame({'label':test_truelist, 'pre':test_prelist})
+            test_pcc = df.pre.corr(df.label)
+            writer.add_scalar('affinity_test/loss', test_loss, epoch)
+            writer.add_scalar('affinity_test/pcc', test_pcc, epoch)
             
-    #         if test_pcc > best_pcc[i]:
-    #             best_pcc[i]=test_pcc
-    #             best_mse[i]=mean_squared_error(test_truelist,test_prelist)
-    #             best_epoch[i]=epoch
-    #             torch.save(Affinity_model,f'./models/saved/affinitymodel_{i}.pt')
+            if test_pcc > best_pcc[i]:
+                best_pcc[i]=test_pcc
+                best_mse[i]=mean_squared_error(test_truelist,test_prelist)
+                best_epoch[i]=epoch
+                torch.save(Affinity_model,f'./models/saved/affinitymodel_{i}.pt')
     
-    # pcc=0
-    # mse=0
-    # for i in range(10):
-    #     pcc=pcc+best_pcc[i]
-    #     mse=mse+best_mse[i]
-    #     print(f'val_{i}   best_pcc  :   '+str(best_pcc[i]))
-    #     print(f'val_{i}   best_mse  :   '+str(best_mse[i]))
-    #     print(f'val_{i}   best_epoch:   '+str(best_epoch[i]))
+    pcc=0
+    mse=0
+    for i in range(10):
+        pcc=pcc+best_pcc[i]
+        mse=mse+best_mse[i]
+        print(f'val_{i}   best_pcc  :   '+str(best_pcc[i]))
+        print(f'val_{i}   best_mse  :   '+str(best_mse[i]))
+        print(f'val_{i}   best_epoch:   '+str(best_epoch[i]))
     
-    # print('pcc  :   '+str(pcc/10))
-    # print('mse  :   '+str(mse/10))
+    print('pcc  :   '+str(pcc/10))
+    print('mse  :   '+str(mse/10))
             
             
         
