@@ -1,5 +1,5 @@
-import torch 
 from  torch.utils.data import Dataset
+from torch_geometric.data import Data
 
 def pickfold(featurelist,labelList,train_index, test_index):
     x_train=[]
@@ -28,3 +28,31 @@ class MyDataset(Dataset):
 
     def __len__(self): 
         return len(self.labelList)
+    
+
+def gcn_pickfold(featurelist,train_index, test_index):
+    train=[]
+    test=[]
+    for index in train_index:
+        train.append(featurelist[index])
+    for index in test_index:
+        test.append(featurelist[index])
+    return  train,test
+    
+class MyGCNDataset(Dataset):
+    def __init__(self, graph_list):
+        self.graph_list = graph_list
+
+    def __len__(self):
+        return len(self.graph_list)
+
+    def __getitem__(self, idx):
+        graph = self.graph_list[idx]
+        node_features = graph.x
+        edges = graph.edge_index
+        y = graph.y
+
+        # 将数据转换为 PyTorch Geometric 的 Data 对象
+        data = Data(x=node_features, edge_index=edges, y=y)
+
+        return data

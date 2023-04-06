@@ -56,23 +56,18 @@ def cat_feature(ret0,ret1):
     ret0['str_seq']=ret0['str_seq']+ret1['str_seq']
     ret0['coord']=torch.cat((ret0['coord'],ret1['coord']),dim=0)
     ret0['coord_mask']=torch.cat((ret0['coord_mask'],ret1['coord_mask']),dim=0)
-    
-    # sys.exit()
+
     return ret0
 
 
 def env2prodesign( model,pdb,selects,device):
-    info = 'msa'
     israndom = False
-    save_T = [1, 2, 5, 10]
-    num = 100
     pdb_name =pdb.split('/')[-1].split('.')[0]
-    fasta_str = ''
     model.eval()
     logging.info(pdb_name)
     chains=list(selects.keys())
     ret0 = get_feature(pdb, chain_id=chains[0], device=device)
-    ret1 = get_feature(pdb, chain_id=chains[0], device=device)
+    ret1 = get_feature(pdb, chain_id=chains[1], device=device)
     default_ret=cat_feature(ret0,ret1)
     
     with torch.no_grad():
@@ -96,29 +91,6 @@ def env2prodesign( model,pdb,selects,device):
 
 
 if __name__=='__main__':
-    
-    # with open("/home/ysbgs/xky/prodesign.txt","w") as f:
-    #     path="/home/ysbgs/xky/pdbs/"
-    #     files= os.listdir(path)
-    #     for file in files:
-    #         if not os.path.isdir(file): 
-    #             fp=path+file
-    #             seqdict,_,_=getInterfaceRateAndSeq(fp,12)
-    #             if(seqdict==-1):continue
-    #             print(seqdict)
-    #             f.write(file.split('.')[0])
-    #             keys=list(seqdict.keys())
-    #             chains='\t'
-    #             for k in keys:
-    #                 chains=chains+k.split('_')[1]+'_'
-    #             f.write(chains[0:-1])
-    #             for k in keys:
-    #                 f.write('\t')
-    #                 f.write(seqdict[k][0])
-    #             f.write('\n')
-            
-            
-   
     model = ProDesign(dim=256,device="cuda:0")
     model.load_state_dict(torch.load("../prodesign/model89.pt",map_location="cuda:0"))
     path='/home/ysbgs/xky/pdbs/'

@@ -60,7 +60,7 @@ if __name__ == '__main__':
     #     if len(blocks[1])>ml:
     #         ml=len(blocks[1])
     # print(ml)
-
+# structure
     # for line in open(args.inputDir+'SKEMPI_all_dg_avg.txt'):
     #     blocks=re.split('\t|\n',line)
     #     pdbname=blocks[0]+'+'+blocks[1]
@@ -76,35 +76,40 @@ if __name__ == '__main__':
     #     chain_esm = runesm1v(seqdict[chain_name], esm1v_model, alphabet, batch_converter, args.device)
     #     torch.save(chain_esm.to(torch.device('cpu')),'../data/esmfeature/skempi/'+chain_name+'.pth')
     
+    files= os.listdir("../data/esmfeature/strute_emb/")
     
+    esm_dict=set()
+    for line in files:
+        esm_dict.add(line.split("_")[0])
     model, alphabet = esm.pretrained.esm_if1_gvp4_t16_142M_UR50()
     model = model.eval()
     pdbs=[]
     # pdb_dict={}
-    with open('../data/pdbbind_affinity_all2_v2.txt','r') as f1:
+    with open('../data/train_set.txt','r') as f1:
         for line in f1:
             pdbs.append(line.split('\t')[0])
             # pdb_dict[line.split('\t')[0]]=line.split('\t')[2]
             
     # f=open('../data/pdbbind_affinity_all2_v2.txt','w')
-            
-    print("所有Kd方法复合物总数："+str(len(pdbs)))
-    path1='/home/ysbgs/xky/PP/'
+    
+    path1='/home/ysbgs/xky/pdbs/'
     path2='/home/ysbgs/xky/pdbs/'
     # for name in pdbs:
     #     mycopyfile(sourcepath+name,path+name)
     sum=0
     for file in pdbs: #遍历文件夹
         # if(file!='3k8p'):   continue
-        fp1 = path1+file+'.ent.pdb'
+        if file in esm_dict: continue
+        
+        fp1 = path1+file+'.pdb'
         fp2=path2+file+'.pdb'
         parser = PDBParser()
         structure = parser.get_structure("temp", fp1)
         chainGroup=set()
-        logging.info(file.split('.')[0])
+        logging.info(file)
         for chain in structure.get_chains():
             chainGroup.add(chain.get_id())
-        logging.info(chainGroup)
+        # logging.info(chainGroup)
         # if len(chainGroup)!=2:
         #     continue
         # f.write(file)
@@ -115,7 +120,6 @@ if __name__ == '__main__':
         coords, _ = esm.inverse_folding.multichain_util.extract_coords_from_complex(structure)
         for chain_id in chainGroup:
             rep = esm.inverse_folding.multichain_util.get_encoder_output_for_complex(model, alphabet, coords,chain_id)
-            print(rep.shape)
+            # print(rep.shape)
             torch.save(rep.to(torch.device('cpu')),'../data/esmfeature/strute_emb/'+file.split('.')[0]+'_'+chain_id+'.pth')
         
-    # print("二聚体数量："+str(sum))

@@ -1,6 +1,7 @@
 #saved feature
 /data/esmfeature
 /data/pdbs
+/data/lefeature
 #缓存
 __pycache__/
 #log

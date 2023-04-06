@@ -14,6 +14,15 @@ def getInterfaceRateFromInterfaceRes(pdbName,interactionInfo,allRes,interfaceRes
         chain2InterfaceRate[pdbName+"_"+eachSubUnit]=len(interfaceRes[eachSubUnit])/sum([len(allRes[each]) for each in eachSubUnit])
     return chain2InterfaceRate
 
+def addLink(connect,x,y,dis):
+    if(x not in connect.keys()):
+        connect[x]=set()
+    connect[x].add(y+"="+str(dis))
+    if(y not in connect.keys()):
+        connect[y]=set()
+    connect[y].add(x+"="+str(dis))
+    return connect
+
 def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
     #pdbName
     pdbName=os.path.basename(os.path.splitext(pdbPath)[0])
@@ -60,7 +69,7 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
                 if resName == "UNK":#UNK 未知
                     resName = "X"
                 else:
-                    resName = Bio.PDB.Polypeptide.three_to_one(resName)
+                    resName = Bio.PDB.Polypeptide.protein_letters_3to1[resName]
             except KeyError:  #不正常的resName
                 continue
             try:
@@ -89,11 +98,13 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
     CACoor=np.array(CACoor)
     dis =  np.linalg.norm(CACoor[:, None, :] - CACoor[None, :, :], axis=-1)
     mask = dis<=interfaceDis
+    inside = dis<=8
     resNumber=len(CAResName)
     #统计interface residue数量
     interfaceRes={}
     interfaceRes[chainGroup[0]]=set()
     interfaceRes[chainGroup[1]]=set()
+    connect={}
     for i in range(resNumber):
         for j in range(i+1,resNumber):
             if mask[i][j]:
@@ -101,13 +112,24 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
                 if CAResName[i][0] in chainGroup[0] and CAResName[j][0] in chainGroup[1]:
                     interfaceRes[chainGroup[0]].add(CAResName[i])
                     interfaceRes[chainGroup[1]].add(CAResName[j])
+                    connect = addLink(connect,CAResName[i],CAResName[j],dis[i][j])
                     continue
                 if CAResName[i][0] in chainGroup[1] and CAResName[j][0] in chainGroup[0]:
                     interfaceRes[chainGroup[1]].add(CAResName[i])
                     interfaceRes[chainGroup[0]].add(CAResName[j])
+                    connect = addLink(connect,CAResName[j],CAResName[i],dis[i][j])
                     continue
+            if inside[i][j]:
+                if CAResName[i][0] in chainGroup[0] and CAResName[j][0] in chainGroup[0]:
+                    if(CAResName[i] in interfaceRes[chainGroup[0]] and CAResName[j] in interfaceRes[chainGroup[0]]):
+                        connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+                if CAResName[i][0] in chainGroup[1] and CAResName[j][0] in chainGroup[1]:
+                    if(CAResName[i] in interfaceRes[chainGroup[1]] and CAResName[j] in interfaceRes[chainGroup[1]]):
+                        connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+                
+    # print(connect)
     # interfaceRateDict=getInterfaceRateFromInterfaceRes(pdbName,interactionInfo,allRes,interfaceRes)
-    return complexSequence,interfaceRes,chainGroup
+    return complexSequence,interfaceRes,chainGroup,connect
 
 if __name__ == '__main__':
     seq,interfaceDict=getInterfaceRateAndSeq('../data/1ay7.pdb','A_B')

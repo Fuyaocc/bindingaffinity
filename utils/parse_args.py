@@ -18,6 +18,7 @@ def get_args():
     parser.add_argument('--batch_size',type=int,default=32,help='batch size ')
     parser.add_argument('--num_layers',type=int,default=3,help='conv and gru numbers')
     parser.add_argument('--padding',type=int,default=180,help='make feature same length')
+    parser.add_argument('--interfacedis',type=int,default=8,help='resdisues distance in protein')
     args = parser.parse_args()
     # if not os.path.exists(args.pdb):   #pdb存在
     #     logging.error("structure does not exist under path {}".format(args.pdb))

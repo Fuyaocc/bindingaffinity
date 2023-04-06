@@ -8,21 +8,18 @@ logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(filename)s[line:
 import esm
 import pandas as pd
 
-from torch.utils.data import DataLoader,Dataset
-# sys.path.append('./utils')
 from utils.parse_args import get_args
 from utils.seq2ESM1v import seq2ESM1v
-from utils.MyDataset import MyDataset,pickfold
-from utils.run_epoch import run_train
-from utils.predict import run_predict
-from utils.feature_padding import to_padding
+from utils.MyDataset import MyGCNDataset,gcn_pickfold
+from utils.run_epoch import gcn_train
+from utils.predict import gcn_predict
 from utils.generateGraph import generate_residue_graph
 from models.affinity_net_gcn import AffinityNet
-# from models.affinity_net_v2 import AffinityNet
 from utils.getInterfaceRate import getInterfaceRateAndSeq
 from sklearn.model_selection import KFold, ShuffleSplit
 from sklearn.metrics import mean_squared_error
 from torch.utils.tensorboard import SummaryWriter
+from torch_geometric.data import DataLoader,Data
 
 from do_test import check_len
 
@@ -47,28 +44,22 @@ if __name__ == '__main__':
         pdbname=blocks[0]
         complexdict[pdbname]=float(blocks[1])
     
-    # print(complexdict)
-
     featureList=[]
     labelList=[]
     i=0
     maxlen=0
     for pdbname in complexdict.keys():
-        # if i>=1:
+        # if i>=10:
         #     continue
         # i=i+1
-        # if pdbname != '3k8p': continue
         
         #local redisue
-        c1=[]
-        c2=[]
         seq,interfaceDict,clist,connect=getInterfaceRateAndSeq('../pdbs/'+pdbname+'.pdb',interfaceDis=args.interfacedis)
         cl1=interfaceDict[clist[0]]
         cl2=interfaceDict[clist[1]]
         start1=seq[pdbname+'_'+clist[0]][1]
         start2=seq[pdbname+'_'+clist[1]][1]
 
-        esmFeature=[]
         #esm1v seq embedding
         # logging.info("generate sequcence esm1v : "+pdbname)
         # chain1_esm=torch.load(args.inputDir+'esmfeature/'+pdbname+'_chain1.pth')
@@ -83,44 +74,30 @@ if __name__ == '__main__':
         
         #le embedding
         logging.info("loading prodesign le emb :  "+pdbname)
-        c1_all=torch.load('/home/ysbgs/xky/lefeature/'+pdbname+'_'+clist[0]+'.pth')
-        c2_all=torch.load('/home/ysbgs/xky/lefeature/'+pdbname+'_'+clist[1]+'.pth')
+        c1_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[0]+'.pth')
+        c2_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[1]+'.pth')
         node_feature={}
         for v in cl1:
             reduise=v.split('_')[1]
             index=int(reduise[1:])-start1
-            c1.append(c1_all[index].tolist()+esm_c1_all[index].tolist())
             node_feature[v]=[]
             node_feature[v].append(c1_all[index].tolist())
             node_feature[v].append(esm_c1_all[index].tolist())
         for v in cl2:
             reduise=v.split('_')[1]
             index=int(reduise[1:])-start2
-            c2.append(c2_all[index].tolist()+esm_c2_all[index].tolist())
             node_feature[v]=[]
             node_feature[v].append(c2_all[index].tolist())
             node_feature[v].append(esm_c2_all[index].tolist())
             
         node_features, adj=generate_residue_graph(pdbname,node_feature,connect,args.padding)
-        node_features = torch.from_numpy(node_features).float()
-        adj = torch.from_numpy(adj).float()
+        x = torch.tensor(node_features, dtype=torch.float)
+        edge_index = torch.tensor(adj.nonzero(), dtype=torch.long)
+
+        data = Data(x=x, edge_index=edge_index,y=complexdict[pdbname])
         
-        
-            
-        if maxlen < len(c1): maxlen= len(c1)
-        if maxlen < len(c2): maxlen= len(c2)
-        
-        esmFeature.append(torch.Tensor(c1).to(args.device))
-        esmFeature.append(torch.Tensor(c2).to(args.device))
-        esmFeature.append(pdbname)
-        
-        featureList.append( esmFeature) 
+        featureList.append(data) 
         labelList.append(complexdict[pdbname])
-    
-    logging.info(str(maxlen))
-    
-    #padding
-    featureList=to_padding(featureList)
         
     #10折交叉
     kf = KFold(n_splits=10,random_state=2022, shuffle=True)
@@ -128,27 +105,24 @@ if __name__ == '__main__':
     best_mse=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
     best_epoch=[0,0,0,0,0,0,0,0,0,0]
     for i, (train_index, test_index) in enumerate(kf.split(np.array(labelList))):
-        # if i!=6:continue
-        Affinity_model=AffinityNet(dim=args.dim,len=args.padding,device=args.device)
+        
+        Affinity_model=AffinityNet(num_features=args.dim,hidden_channel=args.dim//2,out_channel=(args.dim//2)//2,device=args.device)
 
-        x_train,y_train,x_test,y_test=pickfold(featureList,labelList,train_index,test_index)
+        train_set,val_set=gcn_pickfold(featureList,train_index,test_index)
         
-        # check_len(i,x_train,x_test)
-        
-        train_dataset=MyDataset(x_train,y_train)
+        train_dataset=MyGCNDataset(train_set)
         train_dataloader=DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True)
 
-        test_dataset=MyDataset(x_test,y_test)
+        test_dataset=MyGCNDataset(val_set)
         test_dataloader=DataLoader(test_dataset,batch_size=args.batch_size,shuffle=True)
 
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(Affinity_model.parameters(), lr = 1e-4, weight_decay = 1e-4)
-        # optimizer = torch.optim.AdamW(Affinity_model.parameters(),lr=1e-4,weight_decay=1e-4)
 
         writer = SummaryWriter('./log/val'+str(i))
         
         for epoch in range(args.epoch):
-            train_prelist, train_truelist, train_loss = run_train(Affinity_model,train_dataloader,optimizer,criterion,args.device,i,epoch,args.outDir,args.num_layers)
+            train_prelist, train_truelist, train_loss = gcn_train(Affinity_model,train_dataloader,optimizer,criterion,args.device,i,epoch,args.outDir,args.num_layers)
             logging.info("Epoch "+ str(epoch)+ ": train Loss = %.4f"%(train_loss))
 
             df = pd.DataFrame({'label':train_truelist, 'pre':train_prelist})
@@ -156,7 +130,7 @@ if __name__ == '__main__':
             writer.add_scalar('affinity_train/loss', train_loss, epoch)
             writer.add_scalar('affinity_train/pcc', train_pcc, epoch)
         
-            test_prelist, test_truelist,test_loss = run_predict(Affinity_model,test_dataloader,criterion,args.device,i,epoch,args.num_layers)
+            test_prelist, test_truelist,test_loss = gcn_predict(Affinity_model,test_dataloader,criterion,args.device,i,epoch,args.num_layers)
             logging.info("Epoch "+ str(epoch)+ ": test Loss = %.4f"%(test_loss))
 
             df = pd.DataFrame({'label':test_truelist, 'pre':test_prelist})

@@ -33,5 +33,19 @@ def check_len(i,x_train,x_test):
         test_x2_av=test_x2_av/len(x_test)
         f.write("train\tchain_0  len_avg = "+str(train_x1_av)+" , "+"chain_1  len_avg = "+str(train_x2_av)+ " , "+"sum len_avg = "+str(train_x1_av+train_x2_av))
         f.write("\ntest\tchain_0  len_avg = "+str(test_x1_av)+" , "+"chain_1  len_avg = "+str(test_x2_av)+ " , "+"sum len_avg = "+str(test_x1_av+test_x2_av))
+    
+def calpcc():
+    t=[]
+    p=[]
+    with open("./tmp/test/val1/test_400.txt","r") as f:
+        for line in f:
+            x=re.split("\t\t|\n",line)
+            t.append(float(x[0]))
+            p.append(float(x[1]))
+    df = pd.DataFrame({'label':t, 'pre':p})
+    test_pcc = df.pre.corr(df.label)
+    print(test_pcc)
 
+if __name__ == "__main__":
+    calpcc()
         
