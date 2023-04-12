@@ -34,31 +34,45 @@ def generate_residue_graph(pdb_file,featuredict,connect,padding):
     graph = nx.Graph()
         
     for k,v in featuredict.items():
-        graph.add_node(k,embedding=v[0]+v[1])
+        graph.add_node(k,embedding=v[2])
 
     for k,v in connect.items():
         for x in v:
             resName=x.split("=")[0]
             # print(resName)
-            dis=(float)(x.split("=")[1])
-            graph.add_edge(k,resName,dis=dis)
-
+            distance=(float)(x.split("=")[1])
+            graph.add_edge(k,resName,weight=distance,undirected=True)
 
     # 输出图的基本信息
     print(nx.info(graph))
+    
     return graph_to_input(nx_graph=graph)
 
 def graph_to_input(nx_graph):
     # 获取节点数量
     g_nodes = nx_graph.nodes()
+    
+    # 将字符串标识符映射到整数节点编号
+    node_dict = {node: i for i, node in enumerate(nx_graph.nodes)}
 
     # 获取节点特征矩阵
     node_features = []
     for nodeName in g_nodes:
         node_features.append(nx_graph.nodes[nodeName]['embedding'])
     node_features = np.array(node_features)
+    
+    edge_index = []
+    edge_attr = []
+    for u, v, attr in nx_graph.edges(data=True):
+        u, v = node_dict[u], node_dict[v]
+        edge_index.append([u, v])
+        edge_index.append([v, u])
+        edge_attr.append(attr['weight'])
+        edge_attr.append(attr['weight'])
 
     # 获取邻接矩阵
-    adj = nx.to_numpy_array(nx_graph)
-
-    return node_features, adj
+    # adj = nx.to_numpy_array(nx_graph) 
+    
+    # edge_attr_dict = {(u, v): torch.tensor(nx_graph[u][v]['weight']) for u, v in nx_graph.edges}
+    
+    return node_features, edge_index,edge_attr

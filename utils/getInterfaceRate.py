@@ -119,13 +119,14 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
                     interfaceRes[chainGroup[0]].add(CAResName[j])
                     connect = addLink(connect,CAResName[j],CAResName[i],dis[i][j])
                     continue
-            if inside[i][j]:
-                if CAResName[i][0] in chainGroup[0] and CAResName[j][0] in chainGroup[0]:
-                    if(CAResName[i] in interfaceRes[chainGroup[0]] and CAResName[j] in interfaceRes[chainGroup[0]]):
-                        connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
-                if CAResName[i][0] in chainGroup[1] and CAResName[j][0] in chainGroup[1]:
-                    if(CAResName[i] in interfaceRes[chainGroup[1]] and CAResName[j] in interfaceRes[chainGroup[1]]):
-                        connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+            #两条链属于同一个chain group
+            # if inside[i][j]:
+            #     if CAResName[i][0] in chainGroup[0] and CAResName[j][0] in chainGroup[0]:
+            #         if(CAResName[i] in interfaceRes[chainGroup[0]] and CAResName[j] in interfaceRes[chainGroup[0]]):
+            #             connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+            #     if CAResName[i][0] in chainGroup[1] and CAResName[j][0] in chainGroup[1]:
+            #         if(CAResName[i] in interfaceRes[chainGroup[1]] and CAResName[j] in interfaceRes[chainGroup[1]]):
+            #             connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
                 
     # print(connect)
     # interfaceRateDict=getInterfaceRateFromInterfaceRes(pdbName,interactionInfo,allRes,interfaceRes)

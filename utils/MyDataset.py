@@ -50,9 +50,10 @@ class MyGCNDataset(Dataset):
         graph = self.graph_list[idx]
         node_features = graph.x
         edges = graph.edge_index
+        edge_attr=graph.edge_attr
         y = graph.y
 
         # 将数据转换为 PyTorch Geometric 的 Data 对象
-        data = Data(x=node_features, edge_index=edges, y=y)
+        data = Data(x=node_features, edge_index=edges,edge_attr=edge_attr,y=y)
 
         return data

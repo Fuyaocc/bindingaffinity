@@ -17,14 +17,13 @@ from utils.run_epoch import run_train
 from utils.predict import run_predict
 from utils.feature_padding import to_padding
 from utils.generateGraph import generate_residue_graph
-from models.affinity_net_gcn import AffinityNet
-# from models.affinity_net_v2 import AffinityNet
+from models.affinity_net_v2 import AffinityNet
 from utils.getInterfaceRate import getInterfaceRateAndSeq
 from sklearn.model_selection import KFold, ShuffleSplit
 from sklearn.metrics import mean_squared_error
 from torch.utils.tensorboard import SummaryWriter
 
-from do_test import check_len
+from bindingaffinity.affinity_test import check_len
 
 if __name__ == '__main__':
     args=get_args()
@@ -54,15 +53,14 @@ if __name__ == '__main__':
     i=0
     maxlen=0
     for pdbname in complexdict.keys():
-        # if i>=1:
-        #     continue
-        # i=i+1
-        # if pdbname != '3k8p': continue
-        
+        if i>=10:
+            continue
+        i=i+1
+                
         #local redisue
         c1=[]
         c2=[]
-        seq,interfaceDict,clist,connect=getInterfaceRateAndSeq('../pdbs/'+pdbname+'.pdb',interfaceDis=args.interfacedis)
+        seq,interfaceDict,clist,connect=getInterfaceRateAndSeq('./data/pdbs/'+pdbname+'.pdb',interfaceDis=args.interfacedis)
         cl1=interfaceDict[clist[0]]
         cl2=interfaceDict[clist[1]]
         start1=seq[pdbname+'_'+clist[0]][1]
@@ -83,29 +81,19 @@ if __name__ == '__main__':
         
         #le embedding
         logging.info("loading prodesign le emb :  "+pdbname)
-        c1_all=torch.load('/home/ysbgs/xky/lefeature/'+pdbname+'_'+clist[0]+'.pth')
-        c2_all=torch.load('/home/ysbgs/xky/lefeature/'+pdbname+'_'+clist[1]+'.pth')
-        node_feature={}
+        c1_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[0]+'.pth')
+        c2_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[1]+'.pth')
+        
         for v in cl1:
             reduise=v.split('_')[1]
             index=int(reduise[1:])-start1
             c1.append(c1_all[index].tolist()+esm_c1_all[index].tolist())
-            node_feature[v]=[]
-            node_feature[v].append(c1_all[index].tolist())
-            node_feature[v].append(esm_c1_all[index].tolist())
+            
         for v in cl2:
             reduise=v.split('_')[1]
             index=int(reduise[1:])-start2
             c2.append(c2_all[index].tolist()+esm_c2_all[index].tolist())
-            node_feature[v]=[]
-            node_feature[v].append(c2_all[index].tolist())
-            node_feature[v].append(esm_c2_all[index].tolist())
-            
-        node_features, adj=generate_residue_graph(pdbname,node_feature,connect,args.padding)
-        node_features = torch.from_numpy(node_features).float()
-        adj = torch.from_numpy(adj).float()
-        
-        
+                   
             
         if maxlen < len(c1): maxlen= len(c1)
         if maxlen < len(c2): maxlen= len(c2)
@@ -168,7 +156,7 @@ if __name__ == '__main__':
                 best_pcc[i]=test_pcc
                 best_mse[i]=mean_squared_error(test_truelist,test_prelist)
                 best_epoch[i]=epoch
-                torch.save(Affinity_model,f'./models/saved/affinitymodel_{i}.pt')
+                torch.save(Affinity_model,f'./models/saved/cnn_att/affinitymodel_{i}.pt')
     
     pcc=0
     mse=0

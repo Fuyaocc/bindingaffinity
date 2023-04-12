@@ -97,9 +97,9 @@ class BCNet(nn.Module):
 
         self.c = 32
         self.k = k
-        self.v_dim = v_dim;
+        self.v_dim = v_dim
         self.q_dim = q_dim
-        self.h_dim = h_dim;
+        self.h_dim = h_dim
         self.h_out = h_out
 
         self.v_net = FCNet([v_dim, h_dim * self.k], act=act, dropout=dropout[0])

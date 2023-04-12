@@ -24,7 +24,6 @@ from torch.utils.tensorboard import SummaryWriter
 from torch_geometric.data import DataLoader,Data
 from sklearn.manifold import TSNE
 
-
 if __name__ == '__main__':
     args=get_args()
     print(args)
@@ -41,7 +40,7 @@ if __name__ == '__main__':
     #         seqs.append(blocks[1])
     #         seqdict[pdbname]=seqs
 
-    for line in open(args.inputDir+'train_set.txt'):
+    for line in open(args.inputDir+'test_set.txt'):
         blocks=re.split('\t|\n',line)
         pdbname=blocks[0]
         complexdict[pdbname]=float(blocks[1])
@@ -113,60 +112,26 @@ if __name__ == '__main__':
         featureList.append(data) 
         labelList.append(complexdict[pdbname])
         
-    #10折交叉
-    kf = KFold(n_splits=10,random_state=2022, shuffle=True)
-    best_pcc=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-    best_mse=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-    best_epoch=[0,0,0,0,0,0,0,0,0,0]
-    for i, (train_index, test_index) in enumerate(kf.split(np.array(labelList))):
-        
-        Affinity_model=AffinityNet(num_features=args.dim,hidden_channel=args.dim,out_channel=args.dim,device=args.device)
-
-        train_set,val_set=gcn_pickfold(featureList,train_index,test_index)
-        
-        train_dataset=MyGCNDataset(train_set)
-        train_dataloader=DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True)
-
-        test_dataset=MyGCNDataset(val_set)
-        test_dataloader=DataLoader(test_dataset,batch_size=args.batch_size,shuffle=True)
-
-        criterion = torch.nn.MSELoss()
-        optimizer = torch.optim.Adam(Affinity_model.parameters(), lr = 1e-3, weight_decay = 1e-4)
-
-        writer = SummaryWriter('./log/val'+str(i))
-        
-        for epoch in range(args.epoch):
-            train_prelist, train_truelist, train_loss = gcn_train(Affinity_model,train_dataloader,optimizer,criterion,args.device,i,epoch,args.outDir,args.num_layers)
-            logging.info("Epoch "+ str(epoch)+ ": train Loss = %.4f"%(train_loss))
-
-            df = pd.DataFrame({'label':train_truelist, 'pre':train_prelist})
-            train_pcc = df.pre.corr(df.label)
-            writer.add_scalar('affinity_train/loss', train_loss, epoch)
-            writer.add_scalar('affinity_train/pcc', train_pcc, epoch)
-        
-            test_prelist, test_truelist,test_loss = gcn_predict(Affinity_model,test_dataloader,criterion,args.device,i,epoch,args.num_layers)
-            logging.info("Epoch "+ str(epoch)+ ": test Loss = %.4f"%(test_loss))
-
-            df = pd.DataFrame({'label':test_truelist, 'pre':test_prelist})
-            test_pcc = df.pre.corr(df.label)
-            writer.add_scalar('affinity_test/loss', test_loss, epoch)
-            writer.add_scalar('affinity_test/pcc', test_pcc, epoch)
-            
-            if test_pcc > best_pcc[i]:
-                best_pcc[i]=test_pcc
-                best_mse[i]=mean_squared_error(test_truelist,test_prelist)
-                best_epoch[i]=epoch
-                torch.save(Affinity_model.state_dict(),f'./models/saved/gcn/affinity_model{i}.pt')
     
-    pcc=0
-    mse=0
-    for i in range(10):
-        pcc=pcc+best_pcc[i]
-        mse=mse+best_mse[i]
-        print(f'val_{i}   best_pcc  :   '+str(best_pcc[i]))
-        print(f'val_{i}   best_mse  :   '+str(best_mse[i]))
-        print(f'val_{i}   best_epoch:   '+str(best_epoch[i]))
+    Affinity_model=AffinityNet(num_features=args.dim,hidden_channel=args.dim,out_channel=args.dim,device=args.device)
+    # Affinity_model.load_state_dict(torch.load("./models/saved/gcn/affinity_model2.pt"))
+    # Affinity_model=torch.load("./models/saved/gcn/affinity_model2.pt")
+    dataset=MyGCNDataset(featureList)
+    dataloader=DataLoader(dataset,batch_size=32,shuffle=True)
+    criterion = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(Affinity_model.parameters(), lr = 1e-4, weight_decay = 1e-3)
+
     
-    print('pcc  :   '+str(pcc/10))
-    print('mse  :   '+str(mse/10))
-            
+    test_prelist, test_truelist,test_loss = gcn_train(Affinity_model,dataloader,optimizer,criterion,args.device,i,0,args.outDir,args.num_layers)
+    logging.info(" Loss = %.4f"%(test_loss))
+    df = pd.DataFrame({'label':test_truelist, 'pre':test_prelist})
+    with open(f'./tmp/pred.txt','w') as f:
+        for i in range(0,len(test_truelist)):
+            f.write(str(test_truelist[i]))
+            f.write('\t\t')
+            f.write(str(test_prelist[i]))
+            f.write('\n')
+        
+    test_pcc = df.pre.corr(df.label)
+    logging.info("pcc:"+str(test_pcc))
+        

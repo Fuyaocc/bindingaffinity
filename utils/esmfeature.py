@@ -85,15 +85,15 @@ if __name__ == '__main__':
     model = model.eval()
     pdbs=[]
     # pdb_dict={}
-    with open('../data/train_set.txt','r') as f1:
+    with open('../data/test_set.txt','r') as f1:
         for line in f1:
             pdbs.append(line.split('\t')[0])
             # pdb_dict[line.split('\t')[0]]=line.split('\t')[2]
             
     # f=open('../data/pdbbind_affinity_all2_v2.txt','w')
     
-    path1='/home/ysbgs/xky/pdbs/'
-    path2='/home/ysbgs/xky/pdbs/'
+    path1='../data/pdbs/'
+    path2='../data/pdbs/'
     # for name in pdbs:
     #     mycopyfile(sourcepath+name,path+name)
     sum=0
@@ -109,13 +109,7 @@ if __name__ == '__main__':
         logging.info(file)
         for chain in structure.get_chains():
             chainGroup.add(chain.get_id())
-        # logging.info(chainGroup)
-        # if len(chainGroup)!=2:
-        #     continue
-        # f.write(file)
-        # f.write('\t')
-        # f.write(pdb_dict[file])
-        # sum+=1
+            
         structure = esm.inverse_folding.util.load_structure(fp2, list(chainGroup))
         coords, _ = esm.inverse_folding.multichain_util.extract_coords_from_complex(structure)
         for chain_id in chainGroup:

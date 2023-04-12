@@ -24,10 +24,7 @@ class AffinityNet(nn.Module):
         c2 = self.encode1(c2)
         
         f, att = self.bcn(c1, c2)
-
-        # c1=c1.squeeze(dim=2)
-        # c2=c2.squeeze(dim=2)
-        # f = torch.mul(c1,c2)
+        
         
         if mode=="train":
             score = self.decode(f,True)
