@@ -34,7 +34,7 @@ def generate_residue_graph(pdb_file,featuredict,connect,padding):
     graph = nx.Graph()
         
     for k,v in featuredict.items():
-        graph.add_node(k,embedding=v[2])
+        graph.add_node(k,embedding=v[0])
 
     for k,v in connect.items():
         for x in v:

@@ -33,16 +33,8 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
     for chain in structure.get_chains():
         chainGroup.append(chain.get_id())
         interactionInfo=interactionInfo+'_'+chain.get_id()
-    # print(chainGroup)
     interactionInfo=interactionInfo[1:]
-    # print(interactionInfo)
     #先计算interface residue
-    if pdbName=='inl0':
-        chainGroup=['L','H']
-        interactionInfo='L_H'
-    if len(chainGroup)!=2:
-        return -1,0,0
-    
     model=structure[0]
     allRes={}  #complex每条链的有效残基
     complexSequence={} #complex中每条链的序列
@@ -89,7 +81,8 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
         complexSequence[pdbName+'_'+chainID]=["".join(complexSequence[pdbName+'_'+chainID]),minIndex] #序列信息和序列起始位置
     #判断PDB中的链和interaction info中的链是否完全一样
     chainID_in_interactionInfo=set(interactionInfo)
-    chainID_in_interactionInfo.remove("_")
+    if "_" in chainID_in_interactionInfo:
+        chainID_in_interactionInfo.remove("_")
     if not chainID_in_PDB==chainID_in_interactionInfo:
         logging.error("chain in PDB: {}, chain in interaction info {}, not match!".
                       format(str(chainID_in_PDB),str(chainID_in_interactionInfo)))
@@ -102,21 +95,17 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
     resNumber=len(CAResName)
     #统计interface residue数量
     interfaceRes={}
-    interfaceRes[chainGroup[0]]=set()
-    interfaceRes[chainGroup[1]]=set()
+    for chain in chainGroup:
+        interfaceRes[chain]=set()
     connect={}
     for i in range(resNumber):
         for j in range(i+1,resNumber):
             if mask[i][j]:
                 #两条链分属于不同的chain group
-                if CAResName[i][0] in chainGroup[0] and CAResName[j][0] in chainGroup[1]:
-                    interfaceRes[chainGroup[0]].add(CAResName[i])
-                    interfaceRes[chainGroup[1]].add(CAResName[j])
+                if CAResName[i][0] != CAResName[j][0]:
+                    interfaceRes[CAResName[i][0]].add(CAResName[i])
+                    interfaceRes[CAResName[j][0]].add(CAResName[j])
                     connect = addLink(connect,CAResName[i],CAResName[j],dis[i][j])
-                    continue
-                if CAResName[i][0] in chainGroup[1] and CAResName[j][0] in chainGroup[0]:
-                    interfaceRes[chainGroup[1]].add(CAResName[i])
-                    interfaceRes[chainGroup[0]].add(CAResName[j])
                     connect = addLink(connect,CAResName[j],CAResName[i],dis[i][j])
                     continue
             #两条链属于同一个chain group

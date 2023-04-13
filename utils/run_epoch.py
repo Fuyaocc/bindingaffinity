@@ -36,7 +36,7 @@ def run_train(model,dataloader,optimizer,criterion,device,i,epoch,outDir,num_lay
 def gcn_train(model,dataloader,optimizer,criterion,device,i,epoch,outDir,num_layers):
     model.train()
     model.to(device)
-    # f=open(f'./tmp/train/val{i}/train_'+str(epoch)+'.txt','w')
+    f=open(f'./tmp/train/val{i}/train_'+str(epoch)+'.txt','w')
     prelist = []
     truelist = []
     epoch_loss=0.0
@@ -45,15 +45,15 @@ def gcn_train(model,dataloader,optimizer,criterion,device,i,epoch,outDir,num_lay
         label = data.y
         pre=model(data.x,data.edge_index,data.batch,data.edge_attr,False,device)
         pre=pre.to(torch.float32)
-        label=label.unsqueeze(-1).to(torch.float32).to(device)
+        label=label.to(torch.float32).to(device)
         loss = criterion(pre, label)
         for i in range(pre.shape[0]):
             prelist.append(float(pre[i][0]))
             truelist.append(float(label[i]))
-            # f.write(str(float(label[i])))
-            # f.write('\t\t')
-            # f.write(str(float(pre[i][0])))
-            # f.write('\n')
+            f.write(str(float(label[i])))
+            f.write('\t\t')
+            f.write(str(float(pre[i][0])))
+            f.write('\n')
         loss.backward()
         optimizer.step()
         epoch_loss += (loss.detach().item())

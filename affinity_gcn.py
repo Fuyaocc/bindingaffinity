@@ -41,7 +41,7 @@ if __name__ == '__main__':
     #         seqs.append(blocks[1])
     #         seqdict[pdbname]=seqs
 
-    for line in open(args.inputDir+'train_set.txt'):
+    for line in open(args.inputDir+'pdbbind_data.txt'):
         blocks=re.split('\t|\n',line)
         pdbname=blocks[0]
         complexdict[pdbname]=float(blocks[1])
@@ -54,16 +54,12 @@ if __name__ == '__main__':
     i=0
     maxlen=0
     for pdbname in complexdict.keys():
-        # if i>=10:
+        # if i>=100:
         #     continue
         # i=i+1
-        
+            
         #local redisue
-        seq,interfaceDict,clist,connect=getInterfaceRateAndSeq('./data/pdbs/'+pdbname+'.pdb',interfaceDis=args.interfacedis)
-        cl1=interfaceDict[clist[0]]
-        cl2=interfaceDict[clist[1]]
-        start1=seq[pdbname+'_'+clist[0]][1]
-        start2=seq[pdbname+'_'+clist[1]][1]
+        seq,interfaceDict,chainlist,connect=getInterfaceRateAndSeq('./data/pdbs/'+pdbname+'.pdb',interfaceDis=args.interfacedis)
 
         #esm1v seq embedding
         # logging.info("generate sequcence esm1v : "+pdbname)
@@ -73,35 +69,30 @@ if __name__ == '__main__':
         # esmFeature.append(chain2_esm.to(args.device))
         
         #esm-if1 struct embedding
-        logging.info("loading esm structure emb :  "+pdbname)
-        esm_c1_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+clist[0]+'.pth')
-        esm_c2_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+clist[1]+'.pth')
-        esm_c1_all=F.max_pool1d(esm_c1_all,32,32)
-        esm_c2_all=F.max_pool1d(esm_c2_all,32,32)
+        # logging.info("loading esm structure emb :  "+pdbname)
+        # esm_c1_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+clist[0]+'.pth')
+        # esm_c2_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+clist[1]+'.pth')
+        # esm_c1_all=F.max_pool1d(esm_c1_all,32,32)
+        # esm_c2_all=F.max_pool1d(esm_c2_all,32,32)
         
         #le embedding
-        logging.info("loading prodesign le emb :  "+pdbname)
-        c1_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[0]+'.pth')
-        c2_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[1]+'.pth')
-        c1_all=F.max_pool1d(c1_all,16,16)
-        c2_all=F.max_pool1d(c2_all,16,16)
+        # logging.info("loading prodesign le emb :  "+pdbname)
+        # c1_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[0]+'.pth')
+        # c2_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[1]+'.pth')
+        # c1_all=F.max_pool1d(c1_all,16,16)
+        # c2_all=F.max_pool1d(c2_all,16,16)
         
         node_feature={}
-        for v in cl1:
-            reduise=v.split('_')[1]
-            index=int(reduise[1:])-start1
-            node_feature[v]=[]
-            node_feature[v].append(c1_all[index].tolist())
-            node_feature[v].append(esm_c1_all[index].tolist())
-            node_feature[v].append(resFeature[reduise[0]])
-            
-        for v in cl2:
-            reduise=v.split('_')[1]
-            index=int(reduise[1:])-start2
-            node_feature[v]=[]
-            node_feature[v].append(c2_all[index].tolist())
-            node_feature[v].append(esm_c2_all[index].tolist())
-            node_feature[v].append(resFeature[reduise[0]])
+        logging.info("generate graph :"+pdbname)
+        for chain in chainlist:
+            reslist=interfaceDict[chain]
+            for v in reslist:
+                reduise=v.split('_')[1]
+                index=int(reduise[1:])-1
+                node_feature[v]=[]
+                # node_feature[v].append(c1_all[index].tolist())
+                # node_feature[v].append(esm_c1_all[index].tolist())
+                node_feature[v].append(resFeature[reduise[0]])
             
         node_features, edge_index,edge_attr=generate_residue_graph(pdbname,node_feature,connect,args.padding)
         x = torch.tensor(node_features, dtype=torch.float)
@@ -125,7 +116,7 @@ if __name__ == '__main__':
         train_set,val_set=gcn_pickfold(featureList,train_index,test_index)
         
         train_dataset=MyGCNDataset(train_set)
-        train_dataloader=DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True)
+        train_dataloader=DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True,drop_last=True)
 
         test_dataset=MyGCNDataset(val_set)
         test_dataloader=DataLoader(test_dataset,batch_size=args.batch_size,shuffle=True)
