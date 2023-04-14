@@ -104,23 +104,23 @@ if __name__ == '__main__':
         featureList.append(data) 
         labelList.append(complexdict[pdbname])
         
-    
-    Affinity_model=AffinityNet(num_features=args.dim,hidden_channel=args.dim//2,out_channel=args.dim//2,device=args.device)
-    Affinity_model.load_state_dict(torch.load("./models/saved/gcn/affinity_model2.pt"))
-    dataset=MyGCNDataset(featureList)
-    dataloader=DataLoader(dataset,batch_size=args.batch_size,shuffle=True)
-    criterion = torch.nn.MSELoss()
-    
-    test_prelist, test_truelist,test_loss = gcn_predict(Affinity_model,dataloader,criterion,args.device,i,0,args.num_layers)
-    logging.info(" Loss = %.4f"%(test_loss))
-    df = pd.DataFrame({'label':test_truelist, 'pre':test_prelist})
-    with open(f'./tmp/pred.txt','w') as f:
-        for i in range(0,len(test_truelist)):
-            f.write(str(test_truelist[i]))
-            f.write('\t\t')
-            f.write(str(test_prelist[i]))
-            f.write('\n')
+    for i in range(10):
+        Affinity_model=AffinityNet(num_features=args.dim,hidden_channel=args.dim//2,out_channel=args.dim//2,device=args.device)
+        Affinity_model.load_state_dict(torch.load(f"./models/saved/gcn/affinity_model{i}.pt"))
+        dataset=MyGCNDataset(featureList)
+        dataloader=DataLoader(dataset,batch_size=args.batch_size,shuffle=True)
+        criterion = torch.nn.MSELoss()
         
-    test_pcc = df.pre.corr(df.label)
-    logging.info("pcc:"+str(test_pcc))
+        test_prelist, test_truelist,test_loss = gcn_predict(Affinity_model,dataloader,criterion,args.device,i,0,args.num_layers)
+        logging.info(" MSE = %.4f"%(test_loss))
+        df = pd.DataFrame({'label':test_truelist, 'pre':test_prelist})
+        with open(f'./tmp/pred.txt','w') as f:
+            for i in range(0,len(test_truelist)):
+                f.write(str(test_truelist[i]))
+                f.write('\t\t')
+                f.write(str(test_prelist[i]))
+                f.write('\n')
+            
+        test_pcc = df.pre.corr(df.label)
+        logging.info("PCC:"+str(test_pcc))
         

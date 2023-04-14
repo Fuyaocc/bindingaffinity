@@ -44,8 +44,11 @@ if __name__ == '__main__':
         blocks=re.split('\t|\n',line)
         pdbname=blocks[0]
         complexdict[pdbname]=float(blocks[1])
-    # tsne = TSNE(n_components=32,method='exact')
-    
+    # for line in open(args.inputDir+'test_set.txt'):
+    #     blocks=re.split('\t|\n',line)
+    #     pdbname=blocks[0]
+    #     complexdict[pdbname]=float(blocks[1])
+        
     resFeature=getAAOneHotPhys()
     
     # bad_case={"4r8i"}
@@ -143,8 +146,8 @@ if __name__ == '__main__':
 
             df = pd.DataFrame({'label':val_truelist, 'pre':val_prelist})
             val_pcc = df.pre.corr(df.label)
-            writer.add_scalar('affinity_test/loss', val_loss, epoch)
-            writer.add_scalar('affinity_test/pcc', val_pcc, epoch)
+            writer.add_scalar('affinity_val/loss', val_loss, epoch)
+            writer.add_scalar('affinity_val/pcc', val_pcc, epoch)
             
             if val_pcc > best_pcc[i]:
                 best_pcc[i]=val_pcc
