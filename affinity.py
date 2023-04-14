@@ -23,8 +23,6 @@ from sklearn.model_selection import KFold, ShuffleSplit
 from sklearn.metrics import mean_squared_error
 from torch.utils.tensorboard import SummaryWriter
 
-from bindingaffinity.affinity_test import check_len
-
 if __name__ == '__main__':
     args=get_args()
     print(args)
@@ -53,7 +51,7 @@ if __name__ == '__main__':
     i=0
     maxlen=0
     for pdbname in complexdict.keys():
-        if i>=10:
+        if i>=30:
             continue
         i=i+1
                 
@@ -94,7 +92,7 @@ if __name__ == '__main__':
             index=int(reduise[1:])-start2
             c2.append(c2_all[index].tolist()+esm_c2_all[index].tolist())
                    
-            
+        
         if maxlen < len(c1): maxlen= len(c1)
         if maxlen < len(c2): maxlen= len(c2)
         

@@ -18,12 +18,10 @@ def run_predict(model,dataloader,criterion,device,i,epoch,num_layers):
         pre = model(features[0],features[1],num_layers,False)
         pre=pre.to(torch.float32)
         label=label.unsqueeze(-1).to(torch.float32)
-        print(pre)
-        print(label)
         loss = criterion(pre, label)
         for i in range(pre.shape[0]):
             prelist.append(float(pre[i][0]))
-            truelist.append(float(label[i]))
+            truelist.append(float(label[i][0]))
             f.write(str(float(label[i])))
             f.write('\t\t')
             f.write(str(float(pre[i][0])))

@@ -44,7 +44,6 @@ if __name__ == '__main__':
         blocks=re.split('\t|\n',line)
         pdbname=blocks[0]
         complexdict[pdbname]=float(blocks[1])
-    # tsne = TSNE(n_components=32,method='exact')
     
     resFeature=getAAOneHotPhys()
     
@@ -53,56 +52,49 @@ if __name__ == '__main__':
     i=0
     maxlen=0
     for pdbname in complexdict.keys():
-        # if i>=10:
+        # if i>=30:
         #     continue
         # i=i+1
-        
-        #local redisue
-        seq,interfaceDict,clist,connect=getInterfaceRateAndSeq('./data/pdbs/'+pdbname+'.pdb',interfaceDis=args.interfacedis)
-        cl1=interfaceDict[clist[0]]
-        cl2=interfaceDict[clist[1]]
-        start1=seq[pdbname+'_'+clist[0]][1]
-        start2=seq[pdbname+'_'+clist[1]][1]
 
+        #local redisue
+        seq,interfaceDict,chainlist,connect=getInterfaceRateAndSeq('./data/pdbs/'+pdbname+'.pdb',interfaceDis=args.interfacedis)
         #esm1v seq embedding
         # logging.info("generate sequcence esm1v : "+pdbname)
         # chain1_esm=torch.load(args.inputDir+'esmfeature/'+pdbname+'_chain1.pth')
         # chain2_esm=torch.load(args.inputDir+'esmfeature/'+pdbname+'_chain2.pth')
-        # esmFeature.append(chain1_esm.to(args.device))
-        # esmFeature.append(chain2_esm.to(args.device))
+        # seqfeat.append(chain1_esm.to(args.device))
+        # seqfeat.append(chain2_esm.to(args.device))
         
         #esm-if1 struct embedding
-        logging.info("loading esm structure emb :  "+pdbname)
-        esm_c1_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+clist[0]+'.pth')
-        esm_c2_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+clist[1]+'.pth')
-        esm_c1_all=F.max_pool1d(esm_c1_all,32,32)
-        esm_c2_all=F.max_pool1d(esm_c2_all,32,32)
+        # logging.info("loading esm structure emb :  "+pdbname)
+        # esm_c1_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+chainlist[0]+'.pth')
+        # esm_c2_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+chainlist[1]+'.pth')
+        # esm_c1_all=F.avg_pool1d(esm_c1_all,16,16)
+        # esm_c2_all=F.avg_pool1d(esm_c2_all,16,16)
         
         #le embedding
-        logging.info("loading prodesign le emb :  "+pdbname)
-        c1_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[0]+'.pth')
-        c2_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[1]+'.pth')
-        c1_all=F.max_pool1d(c1_all,16,16)
-        c2_all=F.max_pool1d(c2_all,16,16)
+        # logging.info("loading prodesign le emb :  "+pdbname)
+        # c1_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[0]+'.pth')
+        # c2_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[1]+'.pth')
+        # c1_all=F.max_pool1d(c1_all,16,16)
+        # c2_all=F.max_pool1d(c2_all,16,16)
         
         node_feature={}
-        for v in cl1:
-            reduise=v.split('_')[1]
-            index=int(reduise[1:])-start1
-            node_feature[v]=[]
-            node_feature[v].append(c1_all[index].tolist())
-            node_feature[v].append(esm_c1_all[index].tolist())
-            node_feature[v].append(resFeature[reduise[0]])
-            
-        for v in cl2:
-            reduise=v.split('_')[1]
-            index=int(reduise[1:])-start2
-            node_feature[v]=[]
-            node_feature[v].append(c2_all[index].tolist())
-            node_feature[v].append(esm_c2_all[index].tolist())
-            node_feature[v].append(resFeature[reduise[0]])
+        logging.info("generate graph :"+pdbname)
+        for chain in chainlist:
+            reslist=interfaceDict[chain]
+            esm1f_feat=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+chain+'.pth')
+            esm1f_feat=F.avg_pool1d(esm1f_feat,16,16)
+            for v in reslist:
+                reduise=v.split('_')[1]
+                index=int(reduise[1:])-1
+                node_feature[v]=[]
+                # node_feature[v].append(c1_all[index].tolist())
+                node_feature[v].append(esm1f_feat[index].tolist())
+                node_feature[v].append(resFeature[reduise[0]])
             
         node_features, edge_index,edge_attr=generate_residue_graph(pdbname,node_feature,connect,args.padding)
+        if(len(node_feature)==0):continue
         x = torch.tensor(node_features, dtype=torch.float)
         edge_index=torch.tensor(edge_index,dtype=torch.long).t().contiguous()
         edge_attr=torch.tensor(edge_attr,dtype=torch.float)
@@ -113,16 +105,13 @@ if __name__ == '__main__':
         labelList.append(complexdict[pdbname])
         
     
-    Affinity_model=AffinityNet(num_features=args.dim,hidden_channel=args.dim,out_channel=args.dim,device=args.device)
-    # Affinity_model.load_state_dict(torch.load("./models/saved/gcn/affinity_model2.pt"))
-    # Affinity_model=torch.load("./models/saved/gcn/affinity_model2.pt")
+    Affinity_model=AffinityNet(num_features=args.dim,hidden_channel=args.dim//2,out_channel=args.dim//2,device=args.device)
+    Affinity_model.load_state_dict(torch.load("./models/saved/gcn/affinity_model2.pt"))
     dataset=MyGCNDataset(featureList)
-    dataloader=DataLoader(dataset,batch_size=32,shuffle=True)
+    dataloader=DataLoader(dataset,batch_size=args.batch_size,shuffle=True)
     criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(Affinity_model.parameters(), lr = 1e-4, weight_decay = 1e-3)
-
     
-    test_prelist, test_truelist,test_loss = gcn_train(Affinity_model,dataloader,optimizer,criterion,args.device,i,0,args.outDir,args.num_layers)
+    test_prelist, test_truelist,test_loss = gcn_predict(Affinity_model,dataloader,criterion,args.device,i,0,args.num_layers)
     logging.info(" Loss = %.4f"%(test_loss))
     df = pd.DataFrame({'label':test_truelist, 'pre':test_prelist})
     with open(f'./tmp/pred.txt','w') as f:

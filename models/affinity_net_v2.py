@@ -19,7 +19,7 @@ class AffinityNet(nn.Module):
         
         self.to(device)
 
-    def forward(self, c1, c2, num_layers,mode="train"):
+    def forward(self, c1, c2,mode="train"):
         c1 = self.encode(c1)
         c2 = self.encode1(c2)
         
