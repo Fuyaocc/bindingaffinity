@@ -83,6 +83,8 @@ if __name__ == '__main__':
     for line in files:
         esm_dict.add(line.split("_")[0])
     model, alphabet = esm.pretrained.esm_if1_gvp4_t16_142M_UR50()
+    for param in model.parameters():
+        param.requires_grad = False
     model = model.eval()
     pdbs=[]
     # pdb_dict={}
@@ -97,10 +99,11 @@ if __name__ == '__main__':
     # for name in pdbs:
     #     mycopyfile(sourcepath+name,path+name)
     sum=0
+    too_long=["1ogy","1tzn","2wss","3lk4","3sua","3swp"]
     for file in pdbs: #遍历文件夹
         # if(file!='3k8p'):   continue
         if file in esm_dict: continue
-        
+        if file in too_long: continue
         fp1 = path1+file+'.pdb'
         parser = PDBParser()
         structure = parser.get_structure("temp", fp1)
@@ -115,6 +118,6 @@ if __name__ == '__main__':
             rep = esm.inverse_folding.multichain_util.get_encoder_output_for_complex(model, alphabet, coords,chain_id)
             # print(rep.shape)
             torch.save(rep.to(torch.device('cpu')),'../data/esmfeature/strute_emb/'+file.split('.')[0]+'_'+chain_id+'.pth')
-            del rep
+            del rep 
             gc.collect()
         
