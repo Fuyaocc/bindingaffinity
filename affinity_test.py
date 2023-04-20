@@ -16,6 +16,7 @@ from utils.run_epoch import gcn_train
 from utils.predict import gcn_predict
 from utils.generateGraph import generate_residue_graph
 from utils.resFeature import getAAOneHotPhys
+from utils.getSASA import getDSSP
 from models.affinity_net_gcn import AffinityNet
 from utils.getInterfaceRate import getInterfaceRateAndSeq
 from sklearn.model_selection import KFold, ShuffleSplit
@@ -45,7 +46,7 @@ if __name__ == '__main__':
         pdbname=blocks[0]
         complexdict[pdbname]=float(blocks[1])
     
-    resFeature=getAAOneHotPhys()
+    resfeat=getAAOneHotPhys()
     
     featureList=[]
     labelList=[]
@@ -57,6 +58,8 @@ if __name__ == '__main__':
         # i=i+1
 
         #local redisue
+        pdb_path='./data/pdbs/'+pdbname+'.pdb'
+        if pdbname.startswith("5ma"):continue
         seq,interfaceDict,chainlist,connect=getInterfaceRateAndSeq('./data/pdbs/'+pdbname+'.pdb',interfaceDis=args.interfacedis)
         #esm1v seq embedding
         # logging.info("generate sequcence esm1v : "+pdbname)
@@ -64,34 +67,28 @@ if __name__ == '__main__':
         # chain2_esm=torch.load(args.inputDir+'esmfeature/'+pdbname+'_chain2.pth')
         # seqfeat.append(chain1_esm.to(args.device))
         # seqfeat.append(chain2_esm.to(args.device))
-        
-        #esm-if1 struct embedding
-        # logging.info("loading esm structure emb :  "+pdbname)
-        # esm_c1_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+chainlist[0]+'.pth')
-        # esm_c2_all=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+chainlist[1]+'.pth')
-        # esm_c1_all=F.avg_pool1d(esm_c1_all,16,16)
-        # esm_c2_all=F.avg_pool1d(esm_c2_all,16,16)
-        
-        #le embedding
-        # logging.info("loading prodesign le emb :  "+pdbname)
-        # c1_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[0]+'.pth')
-        # c2_all=torch.load('./data/lefeature/'+pdbname+'_'+clist[1]+'.pth')
-        # c1_all=F.max_pool1d(c1_all,16,16)
-        # c2_all=F.max_pool1d(c2_all,16,16)
-        
+
+        dssp=getDSSP(pdb_path)
         node_feature={}
         logging.info("generate graph :"+pdbname)
         for chain in chainlist:
             reslist=interfaceDict[chain]
             esm1f_feat=torch.load('./data/esmfeature/strute_emb/'+pdbname+'_'+chain+'.pth')
             esm1f_feat=F.avg_pool1d(esm1f_feat,16,16)
+            le_feat=torch.load('./data/lefeature/'+pdbname+'_'+chain+'.pth')
+            le_feat=F.avg_pool1d(le_feat,16,16)
             for v in reslist:
                 reduise=v.split('_')[1]
                 index=int(reduise[1:])-1
+                if (chain,index+1) not in dssp.keys(): 
+                    other_feat=[0.0]
+                else:          
+                    other_feat=[dssp[(chain,index+1)][3]]#[rSA,...]
                 node_feature[v]=[]
-                # node_feature[v].append(c1_all[index].tolist())
+                node_feature[v].append(resfeat[reduise[0]])
+                node_feature[v].append(other_feat)
+                # node_feature[v].append(le_feat[index].tolist())
                 node_feature[v].append(esm1f_feat[index].tolist())
-                node_feature[v].append(resFeature[reduise[0]])
             
         node_features, edge_index,edge_attr=generate_residue_graph(pdbname,node_feature,connect,args.padding)
         if(len(node_feature)==0):continue
@@ -111,16 +108,15 @@ if __name__ == '__main__':
         dataloader=DataLoader(dataset,batch_size=args.batch_size,shuffle=True)
         criterion = torch.nn.MSELoss()
         
-        test_prelist, test_truelist,test_loss = gcn_predict(Affinity_model,dataloader,criterion,args.device,i,0,args.num_layers)
-        logging.info(" MSE = %.4f"%(test_loss))
+        test_prelist, test_truelist,test_loss = gcn_predict(Affinity_model,dataloader,criterion,args.device,i,0)
         df = pd.DataFrame({'label':test_truelist, 'pre':test_prelist})
         with open(f'./tmp/pred.txt','w') as f:
-            for i in range(0,len(test_truelist)):
-                f.write(str(test_truelist[i]))
+            for j in range(0,len(test_truelist)):
+                f.write(str(test_truelist[j]))
                 f.write('\t\t')
-                f.write(str(test_prelist[i]))
+                f.write(str(test_prelist[j]))
                 f.write('\n')
             
         test_pcc = df.pre.corr(df.label)
-        logging.info("PCC:"+str(test_pcc))
+        logging.info(str(i)+" ,  MSE:"+str(test_loss)+" , PCC:"+str(test_pcc))
         

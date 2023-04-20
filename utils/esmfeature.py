@@ -9,6 +9,7 @@ logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(filename)s[line:
 import esm.inverse_folding
 from parse_args import get_args
 import shutil
+import gc
 
 def runesm1v(seq, model, alphabet, batch_converter, device):
     res=[]
@@ -114,4 +115,6 @@ if __name__ == '__main__':
             rep = esm.inverse_folding.multichain_util.get_encoder_output_for_complex(model, alphabet, coords,chain_id)
             # print(rep.shape)
             torch.save(rep.to(torch.device('cpu')),'../data/esmfeature/strute_emb/'+file.split('.')[0]+'_'+chain_id+'.pth')
+            del rep
+            gc.collect()
         

@@ -40,10 +40,10 @@ def splitPDB2Part(pdbPath,savePath,interactionInfo):
 #从pdb生成对应的dssp
 def getDSSP(pdbFile):
     if os.path.exists(pdbFile):
-        p=PDBParser()
+        p=PDBParser(QUIET=True)
         structure=p.get_structure("tmp",pdbFile)
         model=structure[0]
-        dssp=DSSP(model,pdbFile)
+        dssp=DSSP(model,pdbFile,dssp='mkdssp')
         return dssp
     else:
         logging.error("no such pdb:{}".format(pdbFile))

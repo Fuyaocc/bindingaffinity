@@ -67,14 +67,17 @@ def env2prodesign( model,pdb,selects,device):
     logging.info(pdb_name)
     chains=list(selects.keys())
     ret0 = get_feature(pdb, chain_id=chains[0], device=device)
+    selects[chains[0]]=ret0["seq"]
     ret1 = get_feature(pdb, chain_id=chains[1], device=device)
+    selects[chains[1]]=ret1["seq"]
     default_ret=cat_feature(ret0,ret1)
-    
+
     with torch.no_grad():
         i=0
-        for chain_id, value in selects.items():            
+        for chain_id, value in selects.items():          
             logging.info('prodesign make pred :' + pdb_name  + '_' + chain_id )
             head=0
+            print(len(value))
             for j in range(0, len(value)):  # 序列每个位置都进行预测
                 ret = update_feature(deepcopy(default_ret), i, israndom=israndom)  # 选择残基的局部环境信息
                 assert ret != default_ret
@@ -87,17 +90,17 @@ def env2prodesign( model,pdb,selects,device):
                 head=1
                 i=i+1
             print(all_features.shape)
-            torch.save(all_features.to(torch.device('cpu')),'/home/ysbgs/xky/lefeature/'+pdb_name+'_'+chain_id+'.pth')
+            torch.save(all_features.to(torch.device('cpu')),'../data/lefeature/'+pdb_name+'_'+chain_id+'.pth')
 
 
 if __name__=='__main__':
-    model = ProDesign(dim=256,device="cuda:0")
-    model.load_state_dict(torch.load("../prodesign/model89.pt",map_location="cuda:0"))
-    path='/home/ysbgs/xky/pdbs/'
-    with open("/home/ysbgs/xky/prodesign.txt","r") as f:
+    model = ProDesign(dim=256,device="cuda:1")
+    model.load_state_dict(torch.load("../prodesign/model89.pt",map_location="cuda:1"))
+    path='../data/pdbs/'
+    with open("../data/prodesign.txt","r") as f:
         for line in f:
             x=re.split('\t|\n',line)
             selects={}
             selects[x[1].split('_')[0]]=x[2]
             selects[x[1].split('_')[1]]=x[3]
-            env2prodesign(model,path+x[0]+'.pdb',selects,device="cuda:0")
+            env2prodesign(model,path+x[0]+'.pdb',selects,device="cuda:1")

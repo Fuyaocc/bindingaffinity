@@ -3,6 +3,8 @@ from Bio.PDB.PDBParser import PDBParser
 import networkx as nx
 import numpy as np
 import scipy.sparse as sp
+import logging
+logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
 def generate_atom_graph(pdb_file):
     # 使用BioPython库中的PDBParser来解析PDB文件
@@ -34,7 +36,10 @@ def generate_residue_graph(pdb_file,featuredict,connect,padding):
     graph = nx.Graph()
         
     for k,v in featuredict.items():
-        graph.add_node(k,embedding=v[0]+v[1])
+        emb=[]
+        for l in v:
+            emb=emb+l
+        graph.add_node(k,embedding=emb)
 
     for k,v in connect.items():
         for x in v:
@@ -44,7 +49,7 @@ def generate_residue_graph(pdb_file,featuredict,connect,padding):
             graph.add_edge(k,resName,weight=distance,undirected=True)
 
     # 输出图的基本信息
-    print(nx.info(graph))
+    logging.info(nx.info(graph))
     
     return graph_to_input(nx_graph=graph)
 

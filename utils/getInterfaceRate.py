@@ -27,7 +27,7 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
     #pdbName
     pdbName=os.path.basename(os.path.splitext(pdbPath)[0])
     chainGroup=[]
-    parser = PDBParser()
+    parser = PDBParser(QUIET=True)
     structure = parser.get_structure("temp", pdbPath)
     interactionInfo=''
     for chain in structure.get_chains():

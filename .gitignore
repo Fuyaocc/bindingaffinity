@@ -2,6 +2,7 @@
 /data/esmfeature
 /data/pdbs
 /data/lefeature
+/data/dsspfeature
 #缓存
 __pycache__/
 #log

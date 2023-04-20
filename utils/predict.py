@@ -31,7 +31,7 @@ def run_predict(model,dataloader,criterion,device,i,epoch,num_layers):
     return prelist,truelist,epoch_loss
 
 
-def gcn_predict(model,dataloader,criterion,device,i,epoch,num_layers):
+def gcn_predict(model,dataloader,criterion,device,i,epoch):
     model.eval()
     model.to(device)
     epoch_loss=0
