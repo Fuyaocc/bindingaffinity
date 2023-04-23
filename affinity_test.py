@@ -110,7 +110,7 @@ if __name__ == '__main__':
         
         test_prelist, test_truelist,test_loss = gcn_predict(Affinity_model,dataloader,criterion,args.device,i,0)
         df = pd.DataFrame({'label':test_truelist, 'pre':test_prelist})
-        with open(f'./tmp/pred.txt','w') as f:
+        with open(f'./tmp/pred/result_{i}.txt','w') as f:
             for j in range(0,len(test_truelist)):
                 f.write(str(test_truelist[j]))
                 f.write('\t\t')

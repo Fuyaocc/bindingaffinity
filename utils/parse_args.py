@@ -19,7 +19,7 @@ def get_args():
     parser.add_argument('--epsilon',type=float,default=0.1,help='adv_sample epsilon')
     parser.add_argument('--alpha',type=float,default=0.5,help='the weight in loss ')
     parser.add_argument('--padding',type=int,default=180,help='make feature same length')
-    parser.add_argument('--interfacedis',type=int,default=8,help='resdisues distance in protein')
+    parser.add_argument('--interfacedis',type=float,default=3.5,help='resdisues distance in protein')
     args = parser.parse_args()
     # if not os.path.exists(args.pdb):   #pdb存在
     #     logging.error("structure does not exist under path {}".format(args.pdb))

@@ -59,9 +59,10 @@ if __name__ == '__main__':
     i=0
     maxlen=0
     for pdbname in complexdict.keys():
-        # if i>=20:
+        # if i>=1:
         #     continue
         # i=i+1
+        # if pdbname != "2vlp":continue
 
         #local redisue
         pdb_path='./data/pdbs/'+pdbname+'.pdb'

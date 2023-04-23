@@ -7,6 +7,9 @@ import numpy as np
 import logging
 import sys
 import os
+import pymol
+from pymol import cmd
+
 def getInterfaceRateFromInterfaceRes(pdbName,interactionInfo,allRes,interfaceRes):
     subUnit=interactionInfo.split("_")
     chain2InterfaceRate={}
@@ -22,6 +25,36 @@ def addLink(connect,x,y,dis):
         connect[y]=set()
     connect[y].add(x+"="+str(dis))
     return connect
+
+def getinterfaceWithPymol(pdbPath,threshold=3.5):
+    cmd.load(pdbPath)
+    cmd.select('proteins', 'polymer.protein')
+ 
+    # 查找相互作用原子对
+    pairs = cmd.find_pairs("proteins","proteins",cutoff=threshold)
+
+    # 将原子对转换为蛋白质残基对
+    interfaceRes={}
+    for a1, a2 in pairs:
+        at1 = cmd.get_model('%s`%d' % (a1[0], a1[1])).atom[0]
+        at2 = cmd.get_model('%s`%d' % (a2[0], a2[1])).atom[0]
+
+        res1=at1.chain+"_"+Bio.PDB.Polypeptide.protein_letters_3to1[at1.resn]+str(at1.resi)
+        res2=at2.chain+"_"+Bio.PDB.Polypeptide.protein_letters_3to1[at2.resn]+str(at2.resi)
+
+        if res1 != res2  and res1[0]!=res2[0]:
+
+            if(res1[0] not in interfaceRes.keys()):
+                interfaceRes[res1[0]]=set()
+            if(res2[0] not in interfaceRes.keys()):
+                interfaceRes[res2[0]]=set()
+            interfaceRes[res1[0]].add(res1)
+            interfaceRes[res2[0]].add(res2)
+
+    cmd.reinitialize()
+    return interfaceRes
+
+
 
 def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
     #pdbName
@@ -94,25 +127,29 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
     inside = dis<=8
     resNumber=len(CAResName)
     #统计interface residue数量
-    interfaceRes={}
-    for chain in chainGroup:
-        interfaceRes[chain]=set()
+    interfaceRes=getinterfaceWithPymol(pdbPath)
+    # for chain in chainGroup:
+    #     interfaceRes[chain]=set()
     connect={}
     for i in range(resNumber):
         for j in range(i+1,resNumber):
-            if mask[i][j]:
-                #两条链分属于不同的chain group
-                if CAResName[i][0] != CAResName[j][0]:
-                    interfaceRes[CAResName[i][0]].add(CAResName[i])
-                    interfaceRes[CAResName[j][0]].add(CAResName[j])
-                    connect = addLink(connect,CAResName[i],CAResName[j],dis[i][j])
-                    connect = addLink(connect,CAResName[j],CAResName[i],dis[i][j])
-            #两条链属于同一个chain group
+            # if mask[i][j]:
+            #     #两条链分属于不同的chain group
+            #     if CAResName[i][0] != CAResName[j][0]:
+            #         interfaceRes[CAResName[i][0]].add(CAResName[i])
+            #         interfaceRes[CAResName[j][0]].add(CAResName[j])
+            #         connect = addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+            #         connect = addLink(connect,CAResName[j],CAResName[i],dis[i][j])
+            # #两条链属于同一个chain group
             if inside[i][j]:
                 if CAResName[i][0] == CAResName[j][0]:
                     if(CAResName[i] in interfaceRes[CAResName[i][0]] and CAResName[j] in interfaceRes[CAResName[j][0]]):
                         connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
                         connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+            if(CAResName[i]!=CAResName[j] and CAResName[i][0]!=CAResName[j][0]):
+                if(CAResName[i] in interfaceRes[CAResName[i][0]] and CAResName[j] in interfaceRes[CAResName[j][0]]):
+                    connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+                    connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
                         
                 
     # print(connect)
