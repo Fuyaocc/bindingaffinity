@@ -66,6 +66,9 @@ def gcn_train(model,dataloader,optimizer,criterion,device,i,epoch,outDir,epsilon
     prelist = []
     truelist = []
     epoch_loss=0.0
+    epoch_normal_mse=0.0
+    epoch_against_mse=0.0
+    epoch_against_js=0.0
     for batch_id,data in enumerate(dataloader):
         optimizer.zero_grad()
         label = data.y
@@ -98,6 +101,14 @@ def gcn_train(model,dataloader,optimizer,criterion,device,i,epoch,outDir,epsilon
         total_loss.backward()
         optimizer.step()
         epoch_loss += (total_loss.detach().item())
+        epoch_normal_mse +=normal_loss
+        epoch_against_mse+=mseloss_dva
+        epoch_against_js+=jsloss_adv
+        
     epoch_loss /= (batch_id+1)
-    return prelist,truelist,epoch_loss
+    epoch_normal_mse /= (batch_id+1)
+    epoch_against_mse /= (batch_id+1)
+    epoch_against_js /= (batch_id+1)
+    
+    return prelist,truelist,epoch_loss,epoch_normal_mse,epoch_against_mse,epoch_against_js
     

@@ -3,6 +3,7 @@
 /data/pdbs
 /data/lefeature
 /data/dsspfeature
+/data/graph
 #缓存
 __pycache__/
 #log

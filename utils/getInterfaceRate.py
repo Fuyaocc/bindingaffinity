@@ -127,29 +127,30 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
     inside = dis<=8
     resNumber=len(CAResName)
     #统计interface residue数量
-    interfaceRes=getinterfaceWithPymol(pdbPath)
-    # for chain in chainGroup:
-    #     interfaceRes[chain]=set()
+    # interfaceRes=getinterfaceWithPymol(pdbPath)
+    interfaceRes={}
+    for chain in chainGroup:
+        interfaceRes[chain]=set()
     connect={}
     for i in range(resNumber):
         for j in range(i+1,resNumber):
-            # if mask[i][j]:
-            #     #两条链分属于不同的chain group
-            #     if CAResName[i][0] != CAResName[j][0]:
-            #         interfaceRes[CAResName[i][0]].add(CAResName[i])
-            #         interfaceRes[CAResName[j][0]].add(CAResName[j])
-            #         connect = addLink(connect,CAResName[i],CAResName[j],dis[i][j])
-            #         connect = addLink(connect,CAResName[j],CAResName[i],dis[i][j])
-            # #两条链属于同一个chain group
+            if mask[i][j]:
+                #两条链分属于不同的chain group
+                if CAResName[i][0] != CAResName[j][0]:
+                    interfaceRes[CAResName[i][0]].add(CAResName[i])
+                    interfaceRes[CAResName[j][0]].add(CAResName[j])
+                    connect = addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+                    connect = addLink(connect,CAResName[j],CAResName[i],dis[i][j])
+            #两条链属于同一个chain group
             if inside[i][j]:
                 if CAResName[i][0] == CAResName[j][0]:
                     if(CAResName[i] in interfaceRes[CAResName[i][0]] and CAResName[j] in interfaceRes[CAResName[j][0]]):
                         connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
                         connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
-            if(CAResName[i]!=CAResName[j] and CAResName[i][0]!=CAResName[j][0]):
-                if(CAResName[i] in interfaceRes[CAResName[i][0]] and CAResName[j] in interfaceRes[CAResName[j][0]]):
-                    connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
-                    connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+            # if(CAResName[i]!=CAResName[j] and CAResName[i][0]!=CAResName[j][0]):
+            #     if(CAResName[i] in interfaceRes[CAResName[i][0]] and CAResName[j] in interfaceRes[CAResName[j][0]]):
+            #         connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+            #         connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
                         
                 
     # print(connect)
