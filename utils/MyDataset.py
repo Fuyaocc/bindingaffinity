@@ -52,8 +52,10 @@ class MyGCNDataset(Dataset):
         edges = graph.edge_index
         edge_attr=graph.edge_attr
         y = graph.y
+        name=graph.name
+        energy=graph.energy
 
         # 将数据转换为 PyTorch Geometric 的 Data 对象
-        data = Data(x=node_features, edge_index=edges,edge_attr=edge_attr,y=y)
+        data = Data(x=node_features, edge_index=edges,edge_attr=edge_attr,y=y,name=name,energy=energy)
 
         return data

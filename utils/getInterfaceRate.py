@@ -35,28 +35,35 @@ def getinterfaceWithPymol(pdbPath,threshold=3.5):
 
     # 将原子对转换为蛋白质残基对
     interfaceRes={}
+    connect=set()
     for a1, a2 in pairs:
         at1 = cmd.get_model('%s`%d' % (a1[0], a1[1])).atom[0]
         at2 = cmd.get_model('%s`%d' % (a2[0], a2[1])).atom[0]
 
-        res1=at1.chain+"_"+Bio.PDB.Polypeptide.protein_letters_3to1[at1.resn]+str(at1.resi)
-        res2=at2.chain+"_"+Bio.PDB.Polypeptide.protein_letters_3to1[at2.resn]+str(at2.resi)
+        if(at1.resn=='UNK'):
+            res1=at1.chain+"_X"+str(at1.resi)
+        else:
+            res1=at1.chain+"_"+Bio.PDB.Polypeptide.protein_letters_3to1[at1.resn]+str(at1.resi)
+        if(at2.resn=="UNK"):
+             res2=at2.chain+"_X"+str(at2.resi)
+        else:
+            res2=at2.chain+"_"+Bio.PDB.Polypeptide.protein_letters_3to1[at2.resn]+str(at2.resi)
 
         if res1 != res2  and res1[0]!=res2[0]:
-
             if(res1[0] not in interfaceRes.keys()):
                 interfaceRes[res1[0]]=set()
             if(res2[0] not in interfaceRes.keys()):
                 interfaceRes[res2[0]]=set()
             interfaceRes[res1[0]].add(res1)
             interfaceRes[res2[0]].add(res2)
-
+            connect.add(res1+"_"+res2)
+            connect.add(res2+"_"+res1)
     cmd.reinitialize()
-    return interfaceRes
+    return interfaceRes,connect
 
 
 
-def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
+def getInterfaceRateAndSeq(pdbPath,plipinter,interfaceDis=8):
     #pdbName
     pdbName=os.path.basename(os.path.splitext(pdbPath)[0])
     chainGroup=[]
@@ -123,34 +130,38 @@ def getInterfaceRateAndSeq(pdbPath,interfaceDis=8):
     #计算distance map
     CACoor=np.array(CACoor)
     dis =  np.linalg.norm(CACoor[:, None, :] - CACoor[None, :, :], axis=-1)
-    mask = dis<=interfaceDis
+    # mask = dis<=interfaceDis
     inside = dis<=8
     resNumber=len(CAResName)
     #统计interface residue数量
-    # interfaceRes=getinterfaceWithPymol(pdbPath)
-    interfaceRes={}
+    interfaceRes,pyconnect=getinterfaceWithPymol(pdbPath)
+    # if pdbName=="2jgz":
+    #     for v in plipinter:
+    #         interfaceRes[v[0]].add(v)
+    # interfaceRes={}
     for chain in chainGroup:
-        interfaceRes[chain]=set()
+        if chain not in interfaceRes.keys():
+            interfaceRes[chain]=set()
     connect={}
     for i in range(resNumber):
         for j in range(i+1,resNumber):
-            if mask[i][j]:
-                #两条链分属于不同的chain group
-                if CAResName[i][0] != CAResName[j][0]:
-                    interfaceRes[CAResName[i][0]].add(CAResName[i])
-                    interfaceRes[CAResName[j][0]].add(CAResName[j])
-                    connect = addLink(connect,CAResName[i],CAResName[j],dis[i][j])
-                    connect = addLink(connect,CAResName[j],CAResName[i],dis[i][j])
-            #两条链属于同一个chain group
+            # if mask[i][j]:
+            #     #两条链分属于不同的chain group
+            #     if CAResName[i][0] != CAResName[j][0]:
+            #         interfaceRes[CAResName[i][0]].add(CAResName[i])
+            #         interfaceRes[CAResName[j][0]].add(CAResName[j])
+            #         connect = addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+            #         connect = addLink(connect,CAResName[j],CAResName[i],dis[i][j])
+            # #两条链属于同一个chain group
             if inside[i][j]:
                 if CAResName[i][0] == CAResName[j][0]:
                     if(CAResName[i] in interfaceRes[CAResName[i][0]] and CAResName[j] in interfaceRes[CAResName[j][0]]):
                         connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
                         connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
-            # if(CAResName[i]!=CAResName[j] and CAResName[i][0]!=CAResName[j][0]):
-            #     if(CAResName[i] in interfaceRes[CAResName[i][0]] and CAResName[j] in interfaceRes[CAResName[j][0]]):
-            #         connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
-            #         connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+            if(CAResName[i]!=CAResName[j] and CAResName[i][0]!=CAResName[j][0]):
+                if(CAResName[i]+"_"+CAResName[j] in pyconnect or CAResName[j]+"_"+CAResName[i] in pyconnect ):
+                    connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
+                    connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
                         
                 
     # print(connect)

@@ -40,14 +40,17 @@ def gcn_predict(model,dataloader,criterion,device,i,epoch):
     truelist = []
     for batch_id,data in enumerate(dataloader):
         label = data.y
-        pre=model(data.x,data.edge_index,data.batch,data.edge_attr,False,device)
+        names=data.name
+        pre=model(data,False,device)
         pre=pre.to(torch.float32)
         label=label.unsqueeze(-1).to(torch.float32).to(device)
         loss = criterion(pre, label)
         for i in range(pre.shape[0]):
             prelist.append(float(pre[i][0]))
-            truelist.append(float(label[i]))
-            f.write(str(float(label[i])))
+            truelist.append(float(label[i][0]))
+            f.write(names[i])
+            f.write('\t\t')
+            f.write(str(float(label[i][0])))
             f.write('\t\t')
             f.write(str(float(pre[i][0])))
             f.write('\n')

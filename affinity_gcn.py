@@ -1,6 +1,7 @@
 import os
 import re
 import torch
+import math
 import numpy as np
 import sys
 import logging
@@ -8,6 +9,7 @@ logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(filename)s[line:
 import esm
 import pandas as pd
 import torch.nn.functional as F
+import torch.optim.lr_scheduler as ls
 
 from utils.parse_args import get_args
 from utils.seq2ESM1v import seq2ESM1v
@@ -17,6 +19,7 @@ from utils.predict import gcn_predict
 from utils.generateGraph import generate_residue_graph
 from utils.resFeature import getAAOneHotPhys
 from utils.getSASA import getDSSP
+from utils.readFoldX import readFoldXResult
 from models.affinity_net_gcn import AffinityNet
 from utils.getInterfaceRate import getInterfaceRateAndSeq
 from sklearn.model_selection import KFold, ShuffleSplit
@@ -46,7 +49,7 @@ if __name__ == '__main__':
         pdbname=blocks[0]
         complexdict[pdbname]=float(blocks[1])
         
-    filter_set=set(["1de4","1ogy","1tzn","2wss","3lk4","3sua","3swp"])#data in test_set or dirty_data
+    filter_set=set(["1de4","1ogy","1tzn","2wss","3lk4","3sua","3swp","4r8i","6c74"])#data in test_set or dirty_data
     for line in open(args.inputDir+'test_set.txt'):
         blocks=re.split('\t|\n',line)
         filter_set.add(blocks[0])
@@ -79,10 +82,16 @@ if __name__ == '__main__':
         if pdbname in graph_dict:
             logging.info("load graph :"+pdbname)
             x = torch.load('./data/graph/'+pdbname+"_x"+'.pth').to(args.device)
+            #去掉onehot
+            # x = x[:,21:]
             edge_index=torch.load('./data/graph/'+pdbname+"edge_index"+'.pth').to(args.device)
             edge_attr=torch.load('./data/graph/'+pdbname+"_edge_attr"+'.pth').to(args.device)
+            energy=torch.load('./data/graph/'+pdbname+"_energy"+'.pth').to(args.device)
+
         else:
             pdb_path='./data/pdbs/'+pdbname+'.pdb'
+            energy=readFoldXResult(args.foldxPath,pdbname)
+            energy=torch.tensor(energy,dtype=torch.float)
             seq,interfaceDict,chainlist,connect=getInterfaceRateAndSeq(pdb_path,interfaceDis=args.interfacedis)
             dssp=getDSSP(pdb_path)
             node_feature={}
@@ -114,38 +123,57 @@ if __name__ == '__main__':
             edge_attr=torch.tensor(edge_attr,dtype=torch.float)
             torch.save(x.to(torch.device('cpu')),'./data/graph/'+pdbname+"_x"+'.pth')
             torch.save(edge_index.to(torch.device('cpu')),'./data/graph/'+pdbname+"edge_index"+'.pth')
-            torch.save(edge_attr.to(torch.device('cpu')),'./data/graph/'+pdbname+"_edge_attr"+'.pth')        
+            torch.save(edge_attr.to(torch.device('cpu')),'./data/graph/'+pdbname+"_edge_attr"+'.pth')
+            torch.save(energy.to(torch.device('cpu')),'./data/graph/'+pdbname+"_energy"+'.pth')      
         
-        data = Data(x=x, edge_index=edge_index,edge_attr=edge_attr,y=complexdict[pdbname])
-                
+        data = Data(x=x, edge_index=edge_index,edge_attr=edge_attr,y=complexdict[pdbname],name=pdbname,energy=energy)
+        # if  data.num_nodes> 2000 : continue
+        maxlen+=1
         featureList.append(data) 
         labelList.append(complexdict[pdbname])
-
+    logging.info(maxlen)
     #10折交叉
-    kf = KFold(n_splits=10,random_state=2022, shuffle=True)
+    kf = KFold(n_splits=5,random_state=2022, shuffle=True)
     best_pcc=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
     best_mse=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+    best_rmse=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+    best_mae=[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
     best_epoch=[0,0,0,0,0,0,0,0,0,0]
     for i, (train_index, test_index) in enumerate(kf.split(np.array(labelList))):
         
-        Affinity_model=AffinityNet(num_features=args.dim,hidden_channel=args.dim//2,out_channel=args.dim//2,device=args.device)
+        Affinity_model=AffinityNet(in_channels=args.dim
+                                   ,hidden_channels=args.dim
+                                   ,out_channels=args.dim
+                                   ,mlp_in_channels=args.dim
+                                   ,device=args.device)
         Affinity_model.to(args.device)
 
         train_set,val_set=gcn_pickfold(featureList,train_index,test_index)
         
         train_dataset=MyGCNDataset(train_set)
-        train_dataloader=DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True,drop_last=True)
+        train_dataloader=DataLoader(train_dataset,batch_size=args.batch_size,shuffle=True)
 
         val_dataset=MyGCNDataset(val_set)
         val_dataloader=DataLoader(val_dataset,batch_size=args.batch_size,shuffle=True)
 
         criterion = torch.nn.MSELoss()
         optimizer = torch.optim.Adam(Affinity_model.parameters(), lr = 1e-3, weight_decay = 1e-4)
+        # scheduler = ls.ExponentialLR(optimizer, gamma=0.9)
 
         writer = SummaryWriter('./log/val'+str(i))
         
         for epoch in range(args.epoch):
-            train_prelist, train_truelist, train_loss,normal_mse,against_mse,against_js= gcn_train(Affinity_model,train_dataloader,optimizer,criterion,args.device,i,epoch,args.outDir,args.epsilon,args.alpha)
+            #train
+            train_prelist, train_truelist, train_loss,normal_mse,against_mse,against_js= gcn_train(Affinity_model
+                                                                                                   ,train_dataloader
+                                                                                                   ,optimizer
+                                                                                                   ,criterion
+                                                                                                   ,args.device
+                                                                                                   ,i
+                                                                                                   ,epoch
+                                                                                                   ,args.outDir
+                                                                                                   ,args.epsilon
+                                                                                                   ,args.alpha)
             logging.info("Epoch "+ str(epoch)+ ": train Loss = %.4f"%(train_loss))
 
             df = pd.DataFrame({'label':train_truelist, 'pre':train_prelist})
@@ -155,30 +183,39 @@ if __name__ == '__main__':
             writer.add_scalar('affinity_train/against_mse', against_mse, epoch)
             writer.add_scalar('affinity_train/against_js', against_js, epoch)
             writer.add_scalar('affinity_train/pcc', train_pcc, epoch)
-        
+            
+            #val
             val_prelist, val_truelist,val_loss = gcn_predict(Affinity_model,val_dataloader,criterion,args.device,i,epoch)
-            logging.info("Epoch "+ str(epoch)+ ": test Loss = %.4f"%(val_loss))
-
             df = pd.DataFrame({'label':val_truelist, 'pre':val_prelist})
             val_pcc = df.pre.corr(df.label)
             writer.add_scalar('affinity_val/loss', val_loss, epoch)
             writer.add_scalar('affinity_val/pcc', val_pcc, epoch)
-            
-            if val_pcc > best_pcc[i]:
+            mae=F.l1_loss(torch.tensor(val_prelist),torch.tensor(val_truelist))
+            mse=F.mse_loss(torch.tensor(val_prelist),torch.tensor(val_truelist))
+            rmse=math.sqrt(mse)
+            logging.info("Epoch "+ str(epoch)+ ": val Loss = %.4f"%(val_loss)+" , mse = %.4f"%(mse)+" , rmse = %.4f"%(rmse)+" , mae = %.4f"%(mae))
+            if rmse < 2.78 and val_pcc > best_pcc[i]:
                 best_pcc[i]=val_pcc
-                best_mse[i]=mean_squared_error(val_truelist,val_prelist)
+                best_mse[i]=mse
+                best_rmse[i]=rmse
+                best_mae[i]=mae
                 best_epoch[i]=epoch
-                torch.save(Affinity_model.state_dict(),f'./models/saved/gcn/affinity_model{i}.pt')
+                torch.save(Affinity_model.state_dict(),f'./models/saved/gcn/affinity_model{i}_dim{args.dim}.pt')
     
-    pcc=0
-    mse=0
-    for i in range(10):
+    pcc=0.
+    mse=0.
+    rmse=0.
+    mae=0.
+    for i in range(5):
         pcc=pcc+best_pcc[i]
         mse=mse+best_mse[i]
-        print(f'val_{i}   best_pcc  :   '+str(best_pcc[i]))
-        print(f'val_{i}   best_mse  :   '+str(best_mse[i]))
-        print(f'val_{i}   best_epoch:   '+str(best_epoch[i]))
+        rmse=rmse+best_rmse[i]
+        mae=mae+best_mae[i]
+        logging.info('val_'+str(i)+' best_pcc = %.4f'%(best_pcc[i])+' , best_mse = %.4f'%(best_mse[i])+' , best_rmse = %.4f'%(best_rmse[i])+' , best_mae = %.4f'%(best_mae[i])+' , best_epoch : '+str(best_epoch[i]))
+
     
-    print('pcc  :   '+str(pcc/10))
-    print('mse  :   '+str(mse/10))
+    print('pcc  :   '+str(pcc/5))
+    print('mse  :   '+str(mse/5))
+    print('rmse :   '+str(rmse/5))
+    print('mae  :   '+str(mae/5))
             

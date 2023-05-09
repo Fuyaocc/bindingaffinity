@@ -12,3 +12,7 @@ log/*
 models/saved/*
 #tmp
 tmp/
+#files
+test.py
+run.sh
+take.py
