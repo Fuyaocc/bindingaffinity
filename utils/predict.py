@@ -57,4 +57,3 @@ def gcn_predict(model,dataloader,criterion,device,i,epoch):
         epoch_loss += (loss.detach().item())
     epoch_loss /= (batch_id+1)
     return prelist,truelist,epoch_loss
-

@@ -1,7 +1,6 @@
 import torch
 import logging
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-from torch_geometric.data import Data,DataLoader,Batch
 from   torch.nn  import KLDivLoss
 import torch.nn.functional as F
 import torch.nn as nn
@@ -64,6 +63,7 @@ def gcn_train(model,dataloader,optimizer,criterion,device,i,epoch,outDir,epsilon
         names=data.name
 
         sample,sample_adv,pre,pre_adv=model(data,True,device)
+
         # summary(model,(data.x,data.edge_index,data.batch,data.edge_attr))
         pre=pre.to(torch.float32)
         label=label.unsqueeze(-1).to(torch.float32).to(device)
@@ -86,6 +86,8 @@ def gcn_train(model,dataloader,optimizer,criterion,device,i,epoch,outDir,epsilon
             f.write('\n')
         total_loss.backward()
         optimizer.step()
+        # for param in model.parameters():
+        #     logging.info(param.grad)
         epoch_loss += (total_loss.detach().item())
         epoch_normal_mse +=normal_loss
         epoch_against_mse+=mseloss_adv
@@ -96,5 +98,40 @@ def gcn_train(model,dataloader,optimizer,criterion,device,i,epoch,outDir,epsilon
     epoch_against_mse /= (batch_id+1)
     epoch_against_js /= (batch_id+1)
     
-    return prelist,truelist,epoch_loss,epoch_normal_mse,epoch_against_mse,epoch_against_js
+    return model,prelist,truelist,epoch_loss,epoch_normal_mse,epoch_against_mse,epoch_against_js
+
+def mpnn_train(model,dataloader,optimizer,criterion,device,i,epoch,outDir,epsilon,alpha):
+    model.train()
+    model.to(device)
+    f=open(f'./tmp/train/val{i}/train_'+str(epoch)+'.txt','w')
+    prelist = []
+    truelist = []
+    epoch_loss=0.0
+    for batch_id,data in enumerate(dataloader):
+        optimizer.zero_grad()
+        label = data.y
+        names=data.name
+        pre=model(data,True,device)
+        pre=pre.to(torch.float32)
+        label=label.unsqueeze(-1).to(torch.float32).to(device)
+        loss=criterion(pre,label)
+        # total_loss=normal_loss
+        for i in range(pre.shape[0]):
+            prelist.append(float(pre[i][0]))
+            truelist.append(float(label[i][0]))
+            f.write(names[i])
+            f.write('\t\t')
+            f.write(str(float(label[i][0])))
+            f.write('\t\t')
+            f.write(str(float(pre[i][0])))
+            f.write('\n')
+        loss.backward()
+        optimizer.step()
+        # for param in model.parameters():
+        #     logging.info(param.grad)
+        epoch_loss += (loss.detach().item())
+        
+    epoch_loss /= (batch_id+1)
+    
+    return model,prelist,truelist,epoch_loss
     

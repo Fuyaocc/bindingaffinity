@@ -39,6 +39,15 @@ def getAAOneHotPhys():
         resFeature[res]=tmp
     return resFeature
 
+def getSignPhys():
+    resFeature={}
+    for res in res2Index:
+        tmp=[0]
+        tmp[res2Index[res]]=1  #onehot
+        tmp+=phys_dic[res]   #physFeature
+        resFeature[res]=tmp
+    return resFeature
+
 def getAAPhys():
     return phys_dic
 

@@ -20,10 +20,12 @@ def getInterfaceRateFromInterfaceRes(pdbName,interactionInfo,allRes,interfaceRes
 def addLink(connect,x,y,dis):
     if(x not in connect.keys()):
         connect[x]=set()
-    connect[x].add(y+"="+str(dis))
+    # connect[x].add(y+"="+str(dis))
+    connect[x].add(y+"=1")
     if(y not in connect.keys()):
         connect[y]=set()
-    connect[y].add(x+"="+str(dis))
+    # connect[y].add(x+"="+str(dis))
+    connect[x].add(x+"=1")
     return connect
 
 def getinterfaceWithPymol(pdbPath,threshold=3.5):
@@ -135,9 +137,6 @@ def getInterfaceRateAndSeq(pdbPath,plipinter,interfaceDis=8):
     resNumber=len(CAResName)
     #统计interface residue数量
     interfaceRes,pyconnect=getinterfaceWithPymol(pdbPath)
-    # if pdbName=="2jgz":
-    #     for v in plipinter:
-    #         interfaceRes[v[0]].add(v)
     # interfaceRes={}
     for chain in chainGroup:
         if chain not in interfaceRes.keys():
@@ -163,7 +162,14 @@ def getInterfaceRateAndSeq(pdbPath,plipinter,interfaceDis=8):
                     connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
                     connect=addLink(connect,CAResName[i],CAResName[j],dis[i][j])
                         
-                
+    # if pdbName=="2o3b":
+    #     for v in plipinter:
+    #         interfaceRes[v[0]].add(v)
+    # i=0
+    # while i < len(plipinter):
+    #     connect=addLink(connect,plipinter[i],plipinter[i+1],1.)
+    #     i=i+2
+
     # print(connect)
     # interfaceRateDict=getInterfaceRateFromInterfaceRes(pdbName,interactionInfo,allRes,interfaceRes)
     return complexSequence,interfaceRes,chainGroup,connect

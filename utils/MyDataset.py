@@ -59,3 +59,19 @@ class MyGCNDataset(Dataset):
         data = Data(x=node_features, edge_index=edges,edge_attr=edge_attr,y=y,name=name,energy=energy)
 
         return data
+
+class mpnnDataset(Dataset):
+    def __init__(self,featurelist):
+        self.featurelist=featurelist
+    
+    def __getitem__(self,index):
+        item=[]
+        item.append(self.featurelist[index][0])
+        item.append(self.featurelist[index][2])
+        item.append(self.featurelist[index][3])
+        item.append(self.featurelist[index][4])
+        item.append(self.featurelist[index][5])
+        return  item
+
+    def __len__(self): 
+        return len(self.featurelist)
